@@ -6,12 +6,12 @@ import ProcessSection from './ProcessSection';
 
 const Main: React.FC = () => {
   const [metadata, setMetadata] = useState<Metadata>({
-    docId: 'it_isdt-ud-dev.conllu',
-    docTitle: 'UD Italian ISDT (dev dataset)',
-    contributor: 'Bosco, Cristina; Lenci, Alessandro; Montemagni, Simonetta; Simi, Maria',
-    corpusRef: 'http://liita.it/data/corpora/UD_Italian-ISDT/corpus',
+    docId: '',
+    docTitle: '',
+    contributor: '',
+    corpusRef: '',
     docAuthor: '',
-    seeAlso: 'https://github.com/UniversalDependencies/UD_Italian-ISDT',
+    seeAlso: '',
     description: '',
   });
 
