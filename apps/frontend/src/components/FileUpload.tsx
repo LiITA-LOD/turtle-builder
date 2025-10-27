@@ -12,7 +12,6 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Paper,
   Typography,
 } from '@mui/material';
 import React from 'react';
@@ -138,7 +137,30 @@ const FileUpload: React.FC<FileUploadProps> = ({
       </Typography>
       <Divider sx={{ mb: 3 }} />
 
-      <Box sx={{ mb: 2 }}>
+      {uploadedFiles.length > 0 && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={uploadedFiles.map((file) => file.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <List>
+              {uploadedFiles.map((file) => (
+                <FileItem key={file.id} file={file} removeFile={removeFile} />
+              ))}
+            </List>
+          </SortableContext>
+        </DndContext>
+
+      )}
+
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">
+          Uploaded Files: {uploadedFiles.length}
+        </Typography>
         <input
           accept="*/*"
           style={{ display: 'none' }}
@@ -152,41 +174,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
             variant="contained"
             component="span"
             startIcon={<UploadIcon />}
-            sx={{ mr: 2 }}
           >
             Upload Files
           </Button>
         </label>
-        <Typography variant="body2" color="text.secondary">
-          Select multiple files to upload. You can drag and drop to reorder
-          them.
-        </Typography>
       </Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Select multiple files to upload. You can drag and drop to reorder
+        them.
+      </Typography>
 
-      {uploadedFiles.length > 0 && (
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Uploaded Files ({uploadedFiles.length})
-          </Typography>
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={uploadedFiles.map((file) => file.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <List>
-                {uploadedFiles.map((file) => (
-                  <FileItem key={file.id} file={file} removeFile={removeFile} />
-                ))}
-              </List>
-            </SortableContext>
-          </DndContext>
-        </Paper>
-      )}
     </Box>
   );
 };

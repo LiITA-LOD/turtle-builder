@@ -147,6 +147,7 @@ const MetadataInput: React.FC<MetadataInputProps> = ({
             sx={{
               height: '32px', // Match button height
               '& .MuiToggleButtonGroup-grouped': {
+                padding: '6px 16px',
                 border: '1px solid',
                 borderColor: 'divider',
                 '&:not(:first-of-type)': {
