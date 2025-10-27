@@ -162,7 +162,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           Uploaded Files: {uploadedFiles.length}
         </Typography>
         <input
-          accept="*/*"
+          accept=".conllu"
           style={{ display: 'none' }}
           id="file-upload"
           multiple

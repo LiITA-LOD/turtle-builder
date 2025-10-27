@@ -116,7 +116,7 @@ const MetadataInput: React.FC<MetadataInputProps> = ({
         }}
       >
         <input
-          accept=".txt,.md,.conllu"
+          accept=".conllu"
           style={{ display: 'none' }}
           id="metadata-file-upload"
           type="file"
