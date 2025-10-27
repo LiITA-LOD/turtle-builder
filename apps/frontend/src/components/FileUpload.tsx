@@ -1,4 +1,9 @@
 import {
+  Delete as DeleteIcon,
+  DragIndicator as DragIndicatorIcon,
+  Upload as UploadIcon,
+} from '@mui/icons-material';
+import {
   Box,
   Button,
   Divider,
@@ -10,11 +15,6 @@ import {
   Paper,
   Typography,
 } from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  DragIndicator as DragIndicatorIcon,
-  Upload as UploadIcon,
-} from '@mui/icons-material';
 import React from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -42,7 +42,12 @@ interface FileItemProps {
   removeFile: (id: string) => void;
 }
 
-const FileItem: React.FC<FileItemProps> = ({ file, index, moveFile, removeFile }) => {
+const FileItem: React.FC<FileItemProps> = ({
+  file,
+  index,
+  moveFile,
+  removeFile,
+}) => {
   const ref = React.useRef<HTMLDivElement>(null);
 
   const [{ isDragging }, drag] = useDrag({
@@ -52,7 +57,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, index, moveFile, removeFile }
       isDragging: monitor.isDragging(),
     }),
     options: {
-      dropEffect: "move"
+      dropEffect: 'move',
     },
   });
 
@@ -70,9 +75,10 @@ const FileItem: React.FC<FileItemProps> = ({ file, index, moveFile, removeFile }
       }
 
       const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const hoverMiddleY =
+        (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
-      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+      const hoverClientY = clientOffset?.y - hoverBoundingRect.top;
 
       if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
         return;
@@ -135,7 +141,10 @@ interface FileUploadProps {
   onFilesChange: (files: UploadedFile[]) => void;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ uploadedFiles, onFilesChange }) => {
+const FileUpload: React.FC<FileUploadProps> = ({
+  uploadedFiles,
+  onFilesChange,
+}) => {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
@@ -186,7 +195,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadedFiles, onFilesChange })
           </Button>
         </label>
         <Typography variant="body2" color="text.secondary">
-          Select multiple files to upload. You can drag and drop to reorder them.
+          Select multiple files to upload. You can drag and drop to reorder
+          them.
         </Typography>
       </Box>
 

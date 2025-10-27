@@ -10,8 +10,8 @@ import { ThemeProvider } from '@mui/material/styles';
 import type React from 'react';
 import { useState } from 'react';
 import FloatingLogo from './components/FloatingLogo';
-import NavigationLinks from './components/NavigationLinks';
 import Main from './components/Main';
+import NavigationLinks from './components/NavigationLinks';
 import ThemeSwitcher from './components/ThemeSwitcher';
 import { darkTheme, lightTheme } from './themes';
 

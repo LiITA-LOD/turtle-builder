@@ -1,3 +1,4 @@
+import { Upload as UploadIcon } from '@mui/icons-material';
 import {
   Box,
   Button,
@@ -7,8 +8,8 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { Upload as UploadIcon } from '@mui/icons-material';
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 
 export interface Metadata {
   docId: string;
@@ -25,7 +26,10 @@ interface MetadataInputProps {
   onMetadataChange: (metadata: Metadata) => void;
 }
 
-const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChange }) => {
+const MetadataInput: React.FC<MetadataInputProps> = ({
+  metadata,
+  onMetadataChange,
+}) => {
   const [useRawInput, setUseRawInput] = useState(false);
   const [rawMetadata, setRawMetadata] = useState(`# docId=${metadata.docId}
 # docTitle=${metadata.docTitle}
@@ -52,7 +56,7 @@ const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChang
   const parseRawMetadata = (raw: string): Metadata => {
     const lines = raw.split('\n');
     const parsed: Partial<Metadata> = {};
-    
+
     lines.forEach((line) => {
       if (line.startsWith('# ')) {
         const [key, ...valueParts] = line.substring(2).split('=');
@@ -62,7 +66,7 @@ const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChang
         }
       }
     });
-    
+
     return {
       docId: parsed.docId || '',
       docTitle: parsed.docTitle || '',
@@ -102,8 +106,15 @@ const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChang
         1. Metadata Input
       </Typography>
       <Divider sx={{ mb: 3 }} />
-      
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          mb: 3,
+        }}
+      >
         <input
           accept=".txt,.md,.conllu"
           style={{ display: 'none' }}
@@ -121,11 +132,9 @@ const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChang
             Load from file
           </Button>
         </label>
-        
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="body1">
-            Input Method:
-          </Typography>
+          <Typography variant="body1">Input Method:</Typography>
           <ToggleButtonGroup
             value={useRawInput ? 'raw' : 'form'}
             exclusive
@@ -157,12 +166,8 @@ const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChang
               },
             }}
           >
-            <ToggleButton value="form">
-              Friendly form
-            </ToggleButton>
-            <ToggleButton value="raw">
-              Raw CoNLL-U header
-            </ToggleButton>
+            <ToggleButton value="form">Friendly form</ToggleButton>
+            <ToggleButton value="raw">Raw CoNLL-U header</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       </Box>
@@ -194,7 +199,9 @@ const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChang
           <TextField
             label="Contributor"
             value={metadata.contributor}
-            onChange={(e) => handleFormFieldChange('contributor', e.target.value)}
+            onChange={(e) =>
+              handleFormFieldChange('contributor', e.target.value)
+            }
             fullWidth
           />
           <TextField
@@ -218,7 +225,9 @@ const MetadataInput: React.FC<MetadataInputProps> = ({ metadata, onMetadataChang
           <TextField
             label="Description"
             value={metadata.description}
-            onChange={(e) => handleFormFieldChange('description', e.target.value)}
+            onChange={(e) =>
+              handleFormFieldChange('description', e.target.value)
+            }
             fullWidth
             sx={{ gridColumn: '1 / -1' }}
           />

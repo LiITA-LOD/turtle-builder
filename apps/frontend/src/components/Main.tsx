@@ -1,7 +1,8 @@
 import { Box } from '@mui/material';
-import React, { useState } from 'react';
-import MetadataInput, { type Metadata } from './MetadataInput';
+import type React from 'react';
+import { useState } from 'react';
 import FileUpload, { type UploadedFile } from './FileUpload';
+import MetadataInput, { type Metadata } from './MetadataInput';
 import ProcessSection from './ProcessSection';
 
 const Main: React.FC = () => {
@@ -25,17 +26,14 @@ const Main: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 2 }}>
-      <MetadataInput 
-        metadata={metadata} 
-        onMetadataChange={setMetadata} 
+      <MetadataInput metadata={metadata} onMetadataChange={setMetadata} />
+
+      <FileUpload
+        uploadedFiles={uploadedFiles}
+        onFilesChange={setUploadedFiles}
       />
-      
-      <FileUpload 
-        uploadedFiles={uploadedFiles} 
-        onFilesChange={setUploadedFiles} 
-      />
-      
-      <ProcessSection 
+
+      <ProcessSection
         metadata={metadata}
         uploadedFiles={uploadedFiles}
         onProcess={handleProcess}

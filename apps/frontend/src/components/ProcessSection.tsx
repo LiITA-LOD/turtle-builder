@@ -1,10 +1,5 @@
-import {
-  Box,
-  Button,
-  Divider,
-  Typography,
-} from '@mui/material';
-import React from 'react';
+import { Box, Button, Divider, Typography } from '@mui/material';
+import type React from 'react';
 import type { Metadata, UploadedFile } from './MetadataInput';
 
 interface ProcessSectionProps {
@@ -13,10 +8,10 @@ interface ProcessSectionProps {
   onProcess: () => void;
 }
 
-const ProcessSection: React.FC<ProcessSectionProps> = ({ 
-  metadata, 
-  uploadedFiles, 
-  onProcess 
+const ProcessSection: React.FC<ProcessSectionProps> = ({
+  metadata,
+  uploadedFiles,
+  onProcess,
 }) => {
   return (
     <Box>
@@ -24,7 +19,7 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
         3. Process Data
       </Typography>
       <Divider sx={{ mb: 3 }} />
-      
+
       <Box sx={{ textAlign: 'center', py: 3 }}>
         <Button
           variant="contained"
