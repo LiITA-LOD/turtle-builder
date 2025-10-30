@@ -61,7 +61,12 @@ export function serializePrefix(prefix: TurtlePrefix): string {
 
 export function serializeValue(value: RDFValue | TurtleLiteral): string {
   if (typeof value === 'string') {
-    return `<${value}>`;
+    // Check if it's a prefixed URI (pattern: prefix:localName)
+    // Prefixed URIs don't contain /, <, > and have a colon with non-empty prefix and local name
+    if (/^[a-zA-Z0-9_]+:[^\/<>]+$/.test(value) && !value.startsWith('http://') && !value.startsWith('https://') && !value.startsWith('_:')) {
+      return value; // Return prefixed URI as-is
+    }
+    return `<${value}>`; // Full URI, wrap in angle brackets
   }
 
   // Handle TurtleLiteral
@@ -71,15 +76,42 @@ export function serializeValue(value: RDFValue | TurtleLiteral): string {
   if (language) {
     result += `@${language}`;
   } else if (datatype) {
-    result += `^^<${datatype}>`;
+    // Check if datatype is xsd:integer - use xsd:int instead
+    if (datatype === 'http://www.w3.org/2001/XMLSchema#integer') {
+      result += `^^xsd:int`;
+    } else if (/^[a-zA-Z0-9_]+:[^\/<>]+$/.test(datatype) && !datatype.startsWith('http://') && !datatype.startsWith('https://')) {
+      result += `^^${datatype}`; // Prefixed datatype
+    } else {
+      result += `^^<${datatype}>`; // Full URI datatype
+    }
   }
 
   return result;
 }
 
 export function serializeTriple(triple: TurtleTriple): string {
-  const subject = typeof triple.subject === 'string' ? `<${triple.subject}>` : triple.subject;
-  const predicate = `<${triple.predicate}>`;
+  // Handle subject - check if it's a prefixed URI or full URI
+  let subject: string;
+  if (typeof triple.subject === 'string') {
+    if (/^[a-zA-Z0-9_]+:[^\/<>]+$/.test(triple.subject) && !triple.subject.startsWith('http://') && !triple.subject.startsWith('https://') && !triple.subject.startsWith('_:')) {
+      subject = triple.subject; // Prefixed URI
+    } else {
+      subject = `<${triple.subject}>`; // Full URI or blank node
+    }
+  } else {
+    subject = triple.subject;
+  }
+
+  // Handle predicate - check if it's rdf:type (use 'a') or a prefixed URI or full URI
+  let predicate: string;
+  if (triple.predicate === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' || triple.predicate === 'rdf:type') {
+    predicate = 'a'; // Use Turtle's abbreviation for rdf:type
+  } else if (/^[a-zA-Z0-9_]+:[^\/<>]+$/.test(triple.predicate) && !triple.predicate.startsWith('http://') && !triple.predicate.startsWith('https://')) {
+    predicate = triple.predicate; // Prefixed URI
+  } else {
+    predicate = `<${triple.predicate}>`; // Full URI
+  }
+
   const object = serializeValue(triple.object);
 
   return `${subject} ${predicate} ${object} .`;
@@ -97,9 +129,93 @@ export function serializeDocument(doc: TurtleDocument): string {
     lines.push(''); // Empty line after prefixes
   }
 
-  // Add triples
+  // Group triples by subject for Turtle abbreviated syntax
+  const triplesBySubject = new Map<string, TurtleTriple[]>();
   for (const triple of doc.triples) {
-    lines.push(serializeTriple(triple));
+    const subjectKey = typeof triple.subject === 'string' ? triple.subject : triple.subject;
+    if (!triplesBySubject.has(subjectKey)) {
+      triplesBySubject.set(subjectKey, []);
+    }
+    triplesBySubject.get(subjectKey)!.push(triple);
+  }
+
+  // Serialize grouped triples
+  for (const [subjectKey, triples] of triplesBySubject.entries()) {
+    if (triples.length === 0) continue;
+
+    const firstTriple = triples[0];
+    const subjectStr = typeof firstTriple.subject === 'string'
+      ? (/^[a-zA-Z0-9_]+:[^\/<>]+$/.test(firstTriple.subject) && !firstTriple.subject.startsWith('http://') && !firstTriple.subject.startsWith('https://') && !firstTriple.subject.startsWith('_:'))
+        ? firstTriple.subject
+        : `<${firstTriple.subject}>`
+      : firstTriple.subject;
+
+    if (triples.length === 1) {
+      // Single triple - serialize normally
+      const predicateStr = firstTriple.predicate === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' || firstTriple.predicate === 'rdf:type'
+        ? 'a'
+        : (/^[a-zA-Z0-9_]+:[^\/<>]+$/.test(firstTriple.predicate) && !firstTriple.predicate.startsWith('http://') && !firstTriple.predicate.startsWith('https://'))
+          ? firstTriple.predicate
+          : `<${firstTriple.predicate}>`;
+      const objectStr = serializeValue(firstTriple.object);
+      lines.push(`${subjectStr} ${predicateStr} ${objectStr} .`);
+    } else {
+      // Multiple triples - group with semicolons
+      const tripleLines: string[] = [];
+
+      for (let i = 0; i < triples.length; i++) {
+        const triple = triples[i];
+        const predicateStr = triple.predicate === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' || triple.predicate === 'rdf:type'
+          ? 'a'
+          : (/^[a-zA-Z0-9_]+:[^\/<>]+$/.test(triple.predicate) && !triple.predicate.startsWith('http://') && !triple.predicate.startsWith('https://'))
+            ? triple.predicate
+            : `<${triple.predicate}>`;
+
+        // Check if predicate has multiple objects (same subject + predicate)
+        const samePredTriples = triples.filter(t =>
+          t.predicate === triple.predicate
+        );
+
+        if (samePredTriples.length > 1 && i === triples.findIndex(t => t.predicate === triple.predicate)) {
+          // Multiple objects for same predicate - comma-separate them
+          const objects = samePredTriples.map(t => serializeValue(t.object));
+          tripleLines.push(`  ${predicateStr} ${objects.join(',\n    ')}${i < triples.length - 1 && triples[i + samePredTriples.length - 1] ? ';' : (i === triples.length - 1 ? ' .' : ';')}`);
+          i += samePredTriples.length - 1; // Skip the other triples with same predicate
+        } else if (samePredTriples.length === 1) {
+          const objectStr = serializeValue(triple.object);
+          const terminator = i === triples.length - 1 ? ' .' : ';';
+          tripleLines.push(`  ${predicateStr} ${objectStr}${terminator}`);
+        }
+      }
+
+      if (tripleLines.length > 0) {
+        // First line: subject + first predicate
+        // For 'a' predicate with long subjects, format like target (a on one line, type on next)
+        const firstLine = tripleLines[0];
+        const firstPredicate = firstLine.startsWith('  ') ? firstLine.substring(2) : firstLine;
+        const isTypePredicate = firstPredicate.trim().startsWith('a ');
+        const subjectLength = subjectStr.length;
+
+        if (isTypePredicate && subjectLength > 60) {
+          // Long subject URI - put 'a' on separate line with 4 spaces, type on next with 4 spaces
+          const typeMatch = firstPredicate.trim().match(/^a (.+)$/);
+          if (typeMatch) {
+            lines.push(subjectStr);
+            lines.push(`    a ${typeMatch[1]}`);
+          } else {
+            lines.push(`${subjectStr} ${firstPredicate}`);
+          }
+        } else {
+          // Short subject URI or non-type predicate - put predicate on same line
+          lines.push(`${subjectStr} ${firstPredicate}`);
+        }
+
+        for (let i = 1; i < tripleLines.length; i++) {
+          lines.push(tripleLines[i]);
+        }
+        lines.push(''); // Blank line after each subject block
+      }
+    }
   }
 
   return lines.join('\n');
@@ -174,7 +290,8 @@ export function addType(doc: TurtleDocument, subject: IRI | BlankNode, type: IRI
 }
 
 export function addLabel(doc: TurtleDocument, subject: IRI | BlankNode, label: string, language?: string): void {
-  addTriple(doc, subject, 'http://www.w3.org/2000/01/rdf-schema#label', literal(label, undefined, language));
+  // Use prefixed URI for rdfs:label
+  addTriple(doc, subject, 'rdfs:label', literal(label, undefined, language));
 }
 
 export function addProperty(doc: TurtleDocument, subject: IRI | BlankNode, predicate: IRI, object: IRI | BlankNode | TurtleLiteral): void {

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { parse, type ConlluDocument } from './conllu.js';
+import { parse, type ConlluDocument } from 'liita-textlinker-frontend/conllu';
 import {
   conlluToTurtle,
   extractMetadata,
