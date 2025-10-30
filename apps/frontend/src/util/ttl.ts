@@ -2,8 +2,8 @@ import type {
   ConlluDocument,
   ConlluSentence,
   ConlluToken,
-} from './conllu.js';
-import { parseFeats } from './conllu.js';
+} from "liita-textlinker-frontend/conllu";
+import { parseFeats } from "liita-textlinker-frontend/conllu";
 
 interface TTLPrefix {
   prefix: string;
