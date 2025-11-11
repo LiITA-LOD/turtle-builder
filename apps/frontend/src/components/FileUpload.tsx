@@ -7,7 +7,6 @@ import {
   Button,
   Divider,
   IconButton,
-  Paper,
   Typography,
 } from '@mui/material';
 import type React from 'react';
@@ -35,62 +34,55 @@ const FileUpload: React.FC<FileUploadProps> = ({ file, onFileChange }) => {
       </Typography>
       <Divider sx={{ mb: 3 }} />
 
-      {file && (
-        <Paper
-          elevation={2}
+      {file ? (
+        <Box
           sx={{
-            p: 2,
-            mb: 2,
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
+            gap: 2,
+            p: 2,
             border: 1,
             borderColor: 'divider',
+            borderRadius: 1,
+            bgcolor: 'background.paper',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body1">{file.name}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              ({(file.size / 1024).toFixed(1)} KB)
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body1" noWrap>
+              {file.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {(file.size / 1024).toFixed(1)} KB
             </Typography>
           </Box>
-          <IconButton onClick={removeFile} color="error" title="Remove file">
+          <IconButton
+            onClick={removeFile}
+            color="error"
+            title="Remove file"
+          >
             <DeleteIcon />
           </IconButton>
-        </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <input
+            accept=".conllu"
+            style={{ display: 'none' }}
+            id="file-upload"
+            type="file"
+            onChange={handleFileUpload}
+          />
+          <label htmlFor="file-upload">
+            <Button
+              variant="contained"
+              component="span"
+              startIcon={<UploadIcon />}
+            >
+              Upload file
+            </Button>
+          </label>
+        </Box>
       )}
-
-      <Box
-        sx={{
-          mb: 2,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <Typography variant="h6">
-          {file ? 'File Uploaded' : 'No file uploaded'}
-        </Typography>
-        <input
-          accept=".conllu"
-          style={{ display: 'none' }}
-          id="file-upload"
-          type="file"
-          onChange={handleFileUpload}
-        />
-        <label htmlFor="file-upload">
-          <Button
-            variant="contained"
-            component="span"
-            startIcon={<UploadIcon />}
-          >
-            {file ? 'Replace File' : 'Upload File'}
-          </Button>
-        </label>
-      </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Select a CoNLL-U file to upload.
-      </Typography>
     </Box>
   );
 };
