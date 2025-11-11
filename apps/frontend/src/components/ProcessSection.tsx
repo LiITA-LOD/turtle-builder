@@ -6,12 +6,14 @@ interface ProcessSectionProps {
   metadata: Metadata;
   uploadedFile: File | null;
   onProcess: () => void;
+  onDownloadTurtle: () => void;
 }
 
 const ProcessSection: React.FC<ProcessSectionProps> = ({
   metadata,
   uploadedFile,
   onProcess,
+  onDownloadTurtle,
 }) => {
   return (
     <Box>
@@ -46,7 +48,8 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
           <Button
             variant="outlined"
             size="large"
-            disabled
+            onClick={onDownloadTurtle}
+            disabled={!uploadedFile}
             sx={{
               px: 4,
               py: 2,
@@ -57,11 +60,6 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
             Download Turtle
           </Button>
         </Box>
-        {!uploadedFile && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Upload a file to enable processing
-          </Typography>
-        )}
       </Box>
     </Box>
   );

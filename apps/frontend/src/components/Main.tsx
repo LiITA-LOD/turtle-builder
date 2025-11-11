@@ -1,9 +1,11 @@
 import { Box } from '@mui/material';
 import type React from 'react';
 import { useState } from 'react';
+import { parse } from 'liita-textlinker-frontend/conllu';
 import FileUpload from './FileUpload';
 import MetadataInput, { type Metadata } from './MetadataInput';
 import ProcessSection from './ProcessSection';
+import { conlluToTurtle } from '../util/ttl';
 
 const Main: React.FC = () => {
   const [metadata, setMetadata] = useState<Metadata>({
@@ -142,6 +144,46 @@ const Main: React.FC = () => {
     }
   };
 
+  const handleDownloadTurtle = async () => {
+    if (!uploadedFile) {
+      console.error('No file uploaded');
+      return;
+    }
+
+    try {
+      // Read file content
+      const fileContent = await readFileContent(uploadedFile);
+
+      // Parse CONLL-U document
+      const document = parse(fileContent);
+
+      // Use metadata from state (user may have edited it)
+      // Convert Metadata to DocumentMetadata format (they have the same structure)
+      const documentMetadata = {
+        docId: metadata.docId,
+        docTitle: metadata.docTitle,
+        contributor: metadata.contributor,
+        corpusRef: metadata.corpusRef,
+        docAuthor: metadata.docAuthor,
+        seeAlso: metadata.seeAlso,
+        description: metadata.description,
+      };
+
+      // Convert to Turtle format
+      const turtleContent = conlluToTurtle(document, documentMetadata);
+
+      // Determine filename based on docTitle or use default
+      const filename = metadata.docTitle
+        ? `${metadata.docTitle}.ttl`
+        : 'output.ttl';
+
+      // Download the file
+      downloadFile(turtleContent, filename);
+    } catch (error) {
+      console.error('Error converting to Turtle:', error);
+    }
+  };
+
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -177,6 +219,7 @@ const Main: React.FC = () => {
         metadata={metadata}
         uploadedFile={uploadedFile}
         onProcess={handleProcess}
+        onDownloadTurtle={handleDownloadTurtle}
       />
     </Box>
   );
