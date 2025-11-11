@@ -1,17 +1,16 @@
 import { Box, Button, Divider, Typography } from '@mui/material';
 import type React from 'react';
-import type { UploadedFile } from './FileUpload';
 import type { Metadata } from './MetadataInput';
 
 interface ProcessSectionProps {
   metadata: Metadata;
-  uploadedFiles: UploadedFile[];
+  uploadedFile: File | null;
   onProcess: () => void;
 }
 
 const ProcessSection: React.FC<ProcessSectionProps> = ({
   metadata,
-  uploadedFiles,
+  uploadedFile,
   onProcess,
 }) => {
   return (
@@ -27,7 +26,7 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
             variant="contained"
             size="large"
             onClick={onProcess}
-            disabled={uploadedFiles.length === 0}
+            disabled={!uploadedFile}
             sx={{
               px: 4,
               py: 2,
@@ -51,9 +50,9 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
             Download Turtle
           </Button>
         </Box>
-        {uploadedFiles.length === 0 && (
+        {!uploadedFile && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Upload at least one file to enable processing
+            Upload a file to enable processing
           </Typography>
         )}
       </Box>

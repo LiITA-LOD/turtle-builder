@@ -1,171 +1,77 @@
-import {
-  Delete as DeleteIcon,
-  DragIndicator as DragIndicatorIcon,
-  Upload as UploadIcon,
-} from '@mui/icons-material';
+import { Upload as UploadIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import {
   Box,
   Button,
   Divider,
   IconButton,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Typography,
+  Paper,
 } from '@mui/material';
 import React from 'react';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
-export interface UploadedFile {
-  id: string;
-  file: File;
-  name: string;
-}
-
-interface FileItemProps {
-  file: UploadedFile;
-  removeFile: (id: string) => void;
-}
-
-const FileItem: React.FC<FileItemProps> = ({ file, removeFile }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: file.id });
-
-  return (
-    <ListItem
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        mb: 1,
-        bgcolor: isDragging ? 'primary.light' : 'background.paper',
-        opacity: isDragging ? 0.3 : 1,
-        boxShadow: isDragging ? 4 : 0,
-        position: 'relative',
-        zIndex: isDragging ? 1000 : 'auto',
-      }}
-    >
-      <ListItemIcon {...attributes} {...listeners}>
-        <DragIndicatorIcon
-          color="action"
-          sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}
-        />
-      </ListItemIcon>
-      <ListItemText
-        primary={file.name}
-        secondary={`${(file.file.size / 1024).toFixed(1)} KB`}
-      />
-      <Box sx={{ display: 'flex', gap: 1 }}>
-        <IconButton
-          size="small"
-          onClick={() => removeFile(file.id)}
-          color="error"
-          title="Remove file"
-        >
-          <DeleteIcon />
-        </IconButton>
-      </Box>
-    </ListItem>
-  );
-};
 
 interface FileUploadProps {
-  uploadedFiles: UploadedFile[];
-  onFilesChange: (files: UploadedFile[]) => void;
+  file: File | null;
+  onFileChange: (file: File | null) => void;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
-  uploadedFiles,
-  onFilesChange,
+  file,
+  onFileChange,
 }) => {
-  const sensors = useSensors(useSensor(PointerSensor));
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = uploadedFiles.findIndex((file) => file.id === active.id);
-      const newIndex = uploadedFiles.findIndex((file) => file.id === over.id);
-      onFilesChange(arrayMove(uploadedFiles, oldIndex, newIndex));
-    }
-  };
-
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
-    const newFiles: UploadedFile[] = Array.from(files).map((file) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      name: file.name,
-    }));
-    onFilesChange([...uploadedFiles, ...newFiles]);
+    if (!files || files.length === 0) return;
+    onFileChange(files[0]);
   };
 
-  const removeFile = (id: string) => {
-    onFilesChange(uploadedFiles.filter((file) => file.id !== id));
+  const removeFile = () => {
+    onFileChange(null);
   };
 
   return (
     <Box sx={{ mb: 4 }}>
       <Typography variant="h4" component="h2" gutterBottom>
-        2. File Upload & Management
+        2. File Upload
       </Typography>
       <Divider sx={{ mb: 3 }} />
 
-      {uploadedFiles.length > 0 && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+      {file && (
+        <Paper
+          elevation={2}
+          sx={{
+            p: 2,
+            mb: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            border: 1,
+            borderColor: 'divider',
+          }}
         >
-          <SortableContext
-            items={uploadedFiles.map((file) => file.id)}
-            strategy={verticalListSortingStrategy}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body1">{file.name}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              ({(file.size / 1024).toFixed(1)} KB)
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={removeFile}
+            color="error"
+            title="Remove file"
           >
-            <List>
-              {uploadedFiles.map((file) => (
-                <FileItem key={file.id} file={file} removeFile={removeFile} />
-              ))}
-            </List>
-          </SortableContext>
-        </DndContext>
-
+            <DeleteIcon />
+          </IconButton>
+        </Paper>
       )}
 
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">
-          Uploaded Files: {uploadedFiles.length}
+          {file ? 'File Uploaded' : 'No file uploaded'}
         </Typography>
         <input
           accept=".conllu"
           style={{ display: 'none' }}
           id="file-upload"
-          multiple
           type="file"
           onChange={handleFileUpload}
         />
@@ -175,17 +81,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
             component="span"
             startIcon={<UploadIcon />}
           >
-            Upload Files
+            {file ? 'Replace File' : 'Upload File'}
           </Button>
         </label>
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Select multiple files to upload. You can drag and drop to reorder
-        them.
+        Select a CoNLL-U file to upload.
       </Typography>
-
     </Box>
   );
 };
 
 export default FileUpload;
+

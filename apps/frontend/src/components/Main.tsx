@@ -1,7 +1,7 @@
 import { Box } from '@mui/material';
 import type React from 'react';
 import { useState } from 'react';
-import FileUpload, { type UploadedFile } from './FileUpload';
+import FileUpload from './FileUpload';
 import MetadataInput, { type Metadata } from './MetadataInput';
 import ProcessSection from './ProcessSection';
 
@@ -16,7 +16,7 @@ const Main: React.FC = () => {
     description: '',
   });
 
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const formatMetadataAsHeader = (meta: Metadata): string => {
     return `# docId=${meta.docId}
@@ -30,25 +30,25 @@ const Main: React.FC = () => {
   };
 
   const handleProcess = async () => {
+    if (!uploadedFile) {
+      console.error('No file uploaded');
+      return;
+    }
+
     try {
       // Format metadata as header
       const header = formatMetadataAsHeader(metadata);
 
-      // Read all file contents
-      const fileContents = await Promise.all(
-        uploadedFiles.map(async (uploadedFile) => {
-          const content = await readFileContent(uploadedFile.file);
-          return content;
-        })
-      );
+      // Read file content
+      const fileContent = await readFileContent(uploadedFile);
 
-      // Concatenate header with all file contents
-      const fullContent = [header, ...fileContents].join('\n');
+      // Concatenate header with file content
+      const fullContent = [header, fileContent].join('\n');
 
       // Create and download the file
       downloadFile(fullContent, 'output.conllu');
     } catch (error) {
-      console.error('Error processing files:', error);
+      console.error('Error processing file:', error);
     }
   };
 
@@ -82,13 +82,13 @@ const Main: React.FC = () => {
       <MetadataInput metadata={metadata} onMetadataChange={setMetadata} />
 
       <FileUpload
-        uploadedFiles={uploadedFiles}
-        onFilesChange={setUploadedFiles}
+        file={uploadedFile}
+        onFileChange={setUploadedFile}
       />
 
       <ProcessSection
         metadata={metadata}
-        uploadedFiles={uploadedFiles}
+        uploadedFile={uploadedFile}
         onProcess={handleProcess}
       />
     </Box>
