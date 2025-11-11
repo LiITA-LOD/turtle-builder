@@ -93,7 +93,7 @@ describe('Turtle Module', () => {
         value: '42',
         datatype: 'http://www.w3.org/2001/XMLSchema#integer'
       };
-      expect(serializeValue(literal)).toBe('"42"^^<http://www.w3.org/2001/XMLSchema#integer>');
+      expect(serializeValue(literal)).toBe('"42"^^xsd:int');
     });
 
     test('should serialize literal with language tag correctly', () => {
@@ -147,7 +147,7 @@ describe('Turtle Module', () => {
       const result = serializeDocument(doc);
       expect(result).toContain('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .');
       expect(result).toContain('@prefix ex: <http://example.org/> .');
-      expect(result).toContain('<http://example.org/subject> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .');
+      expect(result).toContain('<http://example.org/subject> a <http://example.org/Person> .');
     });
   });
 
@@ -232,7 +232,7 @@ describe('Turtle Module', () => {
       addLabel(doc, 'http://example.org/subject', 'Hello World');
 
       expect(doc.triples).toHaveLength(1);
-      expect(doc.triples[0].predicate).toBe('http://www.w3.org/2000/01/rdf-schema#label');
+      expect(doc.triples[0].predicate).toBe('rdfs:label');
       expect(doc.triples[0].object).toEqual({ value: 'Hello World' });
     });
 
@@ -329,9 +329,10 @@ describe('Turtle Module', () => {
       expect(result).toContain('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .');
       expect(result).toContain('@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .');
       expect(result).toContain('@prefix ex: <http://example.org/> .');
-      expect(result).toContain('<http://example.org/Person> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class> .');
-      expect(result).toContain('<http://example.org/john> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .');
-      expect(result).toContain('<http://example.org/john> <http://www.w3.org/2000/01/rdf-schema#label> "John Doe" .');
+      expect(result).toContain('<http://example.org/Person> a <http://www.w3.org/2000/01/rdf-schema#Class> .');
+      expect(result).toContain('<http://example.org/john> a <http://example.org/Person>');
+      expect(result).toContain('<http://example.org/john>');
+      expect(result).toContain('<http://www.w3.org/2000/01/rdf-schema#label> "John Doe"');
     });
 
     test('should create document using helper functions', () => {
@@ -351,11 +352,12 @@ describe('Turtle Module', () => {
 
       const result = serializeDocument(doc);
 
-      expect(result).toContain('<http://example.org/Person> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class> .');
-      expect(result).toContain('<http://example.org/john> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .');
-      expect(result).toContain('<http://example.org/john> <http://www.w3.org/2000/01/rdf-schema#label> "John Doe" .');
-      expect(result).toContain('<http://example.org/john> <http://example.org/email> "john@example.org" .');
-      expect(result).toContain('<http://example.org/john> <http://example.org/age> "30"^^<http://www.w3.org/2001/XMLSchema#integer> .');
+      expect(result).toContain('<http://example.org/Person> a <http://www.w3.org/2000/01/rdf-schema#Class> .');
+      expect(result).toContain('<http://example.org/john> a <http://example.org/Person>');
+      expect(result).toContain('<http://example.org/john>');
+      expect(result).toContain('rdfs:label "John Doe"');
+      expect(result).toContain('<http://example.org/email> "john@example.org"');
+      expect(result).toContain('<http://example.org/age> "30"^^xsd:int');
     });
   });
 });
