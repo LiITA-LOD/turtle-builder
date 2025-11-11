@@ -16,7 +16,7 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
   return (
     <Box>
       <Typography variant="h4" component="h2" gutterBottom>
-        3. Process Data
+        3. Download output files
       </Typography>
       <Divider sx={{ mb: 3 }} />
 

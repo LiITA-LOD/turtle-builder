@@ -103,7 +103,7 @@ const MetadataInput: React.FC<MetadataInputProps> = ({
   return (
     <Box sx={{ mb: 4 }}>
       <Typography variant="h4" component="h2" gutterBottom>
-        1. Metadata Input
+        2. Revise linking metadata
       </Typography>
       <Divider sx={{ mb: 3 }} />
 

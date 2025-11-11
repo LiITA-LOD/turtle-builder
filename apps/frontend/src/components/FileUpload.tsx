@@ -31,7 +31,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   return (
     <Box sx={{ mb: 4 }}>
       <Typography variant="h4" component="h2" gutterBottom>
-        2. File Upload
+        1. Upload linked CoNLL-U
       </Typography>
       <Divider sx={{ mb: 3 }} />
 
