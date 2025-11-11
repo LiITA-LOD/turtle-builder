@@ -9,7 +9,7 @@ import {
   Typography,
 } from '@mui/material';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export interface Metadata {
   docId: string;
@@ -38,6 +38,21 @@ const MetadataInput: React.FC<MetadataInputProps> = ({
 # docAuthor=${metadata.docAuthor}
 # seeAlso=${metadata.seeAlso}
 # description=${metadata.description}`);
+
+  const formatMetadataAsRaw = (meta: Metadata): string => {
+    return `# docId=${meta.docId}
+# docTitle=${meta.docTitle}
+# contributor=${meta.contributor}
+# corpusRef=${meta.corpusRef}
+# docAuthor=${meta.docAuthor}
+# seeAlso=${meta.seeAlso}
+# description=${meta.description}`;
+  };
+
+  // Sync rawMetadata when metadata prop changes (e.g., when extracted from uploaded file)
+  useEffect(() => {
+    setRawMetadata(formatMetadataAsRaw(metadata));
+  }, [metadata, formatMetadataAsRaw]);
 
   const handleFileLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -76,16 +91,6 @@ const MetadataInput: React.FC<MetadataInputProps> = ({
       seeAlso: parsed.seeAlso || '',
       description: parsed.description || '',
     };
-  };
-
-  const formatMetadataAsRaw = (meta: Metadata): string => {
-    return `# docId=${meta.docId}
-# docTitle=${meta.docTitle}
-# contributor=${meta.contributor}
-# corpusRef=${meta.corpusRef}
-# docAuthor=${meta.docAuthor}
-# seeAlso=${meta.seeAlso}
-# description=${meta.description}`;
   };
 
   const handleRawInputChange = (value: string) => {

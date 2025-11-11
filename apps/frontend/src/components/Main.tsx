@@ -18,6 +18,67 @@ const Main: React.FC = () => {
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
+  const extractMetadataFromContent = (content: string): Metadata => {
+    const lines = content.split('\n');
+    const parsed: Partial<Metadata> = {};
+
+    lines.forEach((line) => {
+      if (line.startsWith('# ')) {
+        const [key, ...valueParts] = line.substring(2).split('=');
+        const value = valueParts.join('=');
+        if (key && value !== undefined) {
+          const trimmedKey = key.trim();
+          if (
+            trimmedKey === 'docId' ||
+            trimmedKey === 'docTitle' ||
+            trimmedKey === 'contributor' ||
+            trimmedKey === 'corpusRef' ||
+            trimmedKey === 'docAuthor' ||
+            trimmedKey === 'seeAlso' ||
+            trimmedKey === 'description'
+          ) {
+            parsed[trimmedKey as keyof Metadata] = value;
+          }
+        }
+      }
+    });
+
+    return {
+      docId: parsed.docId || '',
+      docTitle: parsed.docTitle || '',
+      contributor: parsed.contributor || '',
+      corpusRef: parsed.corpusRef || '',
+      docAuthor: parsed.docAuthor || '',
+      seeAlso: parsed.seeAlso || '',
+      description: parsed.description || '',
+    };
+  };
+
+  const handleFileChange = async (file: File | null) => {
+    setUploadedFile(file);
+
+    if (file) {
+      try {
+        const content = await readFileContent(file);
+        const extractedMetadata = extractMetadataFromContent(content);
+        setMetadata(extractedMetadata);
+      } catch (error) {
+        console.error('Error reading file for metadata extraction:', error);
+      }
+    } else {
+      // Reset metadata when file is removed
+      setMetadata({
+        docId: '',
+        docTitle: '',
+        contributor: '',
+        corpusRef: '',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      });
+    }
+  };
+
   const formatMetadataAsHeader = (meta: Metadata): string => {
     return `# docId=${meta.docId}
 # docTitle=${meta.docTitle}
@@ -27,6 +88,32 @@ const Main: React.FC = () => {
 # seeAlso=${meta.seeAlso}
 # description=${meta.description}
 `;
+  };
+
+  const stripMetadataFromContent = (content: string): string => {
+    const lines = content.split('\n');
+    const metadataKeys = [
+      'docId',
+      'docTitle',
+      'contributor',
+      'corpusRef',
+      'docAuthor',
+      'seeAlso',
+      'description',
+    ];
+
+    // Filter out lines that are metadata comments
+    const filteredLines = lines.filter((line) => {
+      if (!line.startsWith('# ')) {
+        return true; // Keep non-metadata lines
+      }
+
+      const [key] = line.substring(2).split('=');
+      const trimmedKey = key?.trim();
+      return !metadataKeys.includes(trimmedKey || '');
+    });
+
+    return filteredLines.join('\n');
   };
 
   const handleProcess = async () => {
@@ -42,8 +129,11 @@ const Main: React.FC = () => {
       // Read file content
       const fileContent = await readFileContent(uploadedFile);
 
-      // Concatenate header with file content
-      const fullContent = [header, fileContent].join('\n');
+      // Strip existing metadata from file content
+      const contentWithoutMetadata = stripMetadataFromContent(fileContent);
+
+      // Concatenate header with file content (without old metadata)
+      const fullContent = [header, contentWithoutMetadata].join('\n');
 
       // Create and download the file
       downloadFile(fullContent, 'output.conllu');
@@ -79,12 +169,9 @@ const Main: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 2 }}>
-      <MetadataInput metadata={metadata} onMetadataChange={setMetadata} />
+      <FileUpload file={uploadedFile} onFileChange={handleFileChange} />
 
-      <FileUpload
-        file={uploadedFile}
-        onFileChange={setUploadedFile}
-      />
+      <MetadataInput metadata={metadata} onMetadataChange={setMetadata} />
 
       <ProcessSection
         metadata={metadata}
