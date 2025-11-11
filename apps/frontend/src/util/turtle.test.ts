@@ -1,30 +1,30 @@
 import { describe, expect, test } from '@rstest/core';
 import {
-  createDocument,
+  addBooleanProperty,
+  addIntegerProperty,
+  addLabel,
+  addMultipleTriples,
   addPrefix,
+  addStringProperty,
   addTriple,
+  addType,
+  blankNode,
+  createCollection,
+  createDocument,
+  createPrefixedURI,
+  createURI,
+  iri,
+  literal,
+  parse,
   serializeDocument,
   serializePrefix,
   serializeTriple,
   serializeValue,
-  validateDocument,
-  parse,
-  iri,
-  literal,
-  blankNode,
-  triple,
-  addType,
-  addLabel,
-  addStringProperty,
-  addIntegerProperty,
-  addBooleanProperty,
-  createURI,
-  createPrefixedURI,
-  addMultipleTriples,
-  createCollection,
+  type TurtleLiteral,
   type TurtlePrefix,
   type TurtleTriple,
-  type TurtleLiteral
+  triple,
+  validateDocument,
 } from './turtle';
 
 describe('Turtle Module', () => {
@@ -44,7 +44,7 @@ describe('Turtle Module', () => {
       expect(doc.prefixes).toHaveLength(1);
       expect(doc.prefixes[0]).toEqual({
         prefix: 'rdf',
-        uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+        uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       });
     });
   });
@@ -52,13 +52,18 @@ describe('Turtle Module', () => {
   describe('addTriple', () => {
     test('should add a triple to document', () => {
       const doc = createDocument();
-      addTriple(doc, 'http://example.org/subject', 'http://example.org/predicate', 'http://example.org/object');
+      addTriple(
+        doc,
+        'http://example.org/subject',
+        'http://example.org/predicate',
+        'http://example.org/object',
+      );
 
       expect(doc.triples).toHaveLength(1);
       expect(doc.triples[0]).toEqual({
         subject: 'http://example.org/subject',
         predicate: 'http://example.org/predicate',
-        object: 'http://example.org/object'
+        object: 'http://example.org/object',
       });
     });
   });
@@ -67,16 +72,20 @@ describe('Turtle Module', () => {
     test('should serialize a prefix correctly', () => {
       const prefix: TurtlePrefix = {
         prefix: 'rdf',
-        uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+        uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       };
 
-      expect(serializePrefix(prefix)).toBe('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .');
+      expect(serializePrefix(prefix)).toBe(
+        '@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .',
+      );
     });
   });
 
   describe('serializeValue', () => {
     test('should serialize IRI correctly', () => {
-      expect(serializeValue('http://example.org/resource')).toBe('<http://example.org/resource>');
+      expect(serializeValue('http://example.org/resource')).toBe(
+        '<http://example.org/resource>',
+      );
     });
 
     test('should serialize blank node correctly', () => {
@@ -91,7 +100,7 @@ describe('Turtle Module', () => {
     test('should serialize literal with datatype correctly', () => {
       const literal: TurtleLiteral = {
         value: '42',
-        datatype: 'http://www.w3.org/2001/XMLSchema#integer'
+        datatype: 'http://www.w3.org/2001/XMLSchema#integer',
       };
       expect(serializeValue(literal)).toBe('"42"^^xsd:int');
     });
@@ -99,7 +108,7 @@ describe('Turtle Module', () => {
     test('should serialize literal with language tag correctly', () => {
       const literal: TurtleLiteral = {
         value: 'Hello',
-        language: 'en'
+        language: 'en',
       };
       expect(serializeValue(literal)).toBe('"Hello"@en');
     });
@@ -115,20 +124,24 @@ describe('Turtle Module', () => {
       const triple: TurtleTriple = {
         subject: 'http://example.org/subject',
         predicate: 'http://example.org/predicate',
-        object: 'http://example.org/object'
+        object: 'http://example.org/object',
       };
 
-      expect(serializeTriple(triple)).toBe('<http://example.org/subject> <http://example.org/predicate> <http://example.org/object> .');
+      expect(serializeTriple(triple)).toBe(
+        '<http://example.org/subject> <http://example.org/predicate> <http://example.org/object> .',
+      );
     });
 
     test('should serialize triple with literal object correctly', () => {
       const triple: TurtleTriple = {
         subject: 'http://example.org/subject',
         predicate: 'http://example.org/predicate',
-        object: { value: 'Hello World' }
+        object: { value: 'Hello World' },
       };
 
-      expect(serializeTriple(triple)).toBe('<http://example.org/subject> <http://example.org/predicate> "Hello World" .');
+      expect(serializeTriple(triple)).toBe(
+        '<http://example.org/subject> <http://example.org/predicate> "Hello World" .',
+      );
     });
   });
 
@@ -142,12 +155,21 @@ describe('Turtle Module', () => {
       const doc = createDocument();
       addPrefix(doc, 'rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
       addPrefix(doc, 'ex', 'http://example.org/');
-      addTriple(doc, 'http://example.org/subject', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://example.org/Person');
+      addTriple(
+        doc,
+        'http://example.org/subject',
+        'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+        'http://example.org/Person',
+      );
 
       const result = serializeDocument(doc);
-      expect(result).toContain('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .');
+      expect(result).toContain(
+        '@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .',
+      );
       expect(result).toContain('@prefix ex: <http://example.org/> .');
-      expect(result).toContain('<http://example.org/subject> a <http://example.org/Person> .');
+      expect(result).toContain(
+        '<http://example.org/subject> a <http://example.org/Person> .',
+      );
     });
   });
 
@@ -155,7 +177,12 @@ describe('Turtle Module', () => {
     test('should validate correct document', () => {
       const doc = createDocument();
       addPrefix(doc, 'rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
-      addTriple(doc, 'http://example.org/subject', 'http://example.org/predicate', 'http://example.org/object');
+      addTriple(
+        doc,
+        'http://example.org/subject',
+        'http://example.org/predicate',
+        'http://example.org/object',
+      );
 
       expect(validateDocument(doc)).toBe(true);
     });
@@ -173,7 +200,11 @@ describe('Turtle Module', () => {
 
     test('should reject document with invalid triple', () => {
       const doc = createDocument();
-      doc.triples.push({ subject: '', predicate: 'http://example.org/predicate', object: 'http://example.org/object' });
+      doc.triples.push({
+        subject: '',
+        predicate: 'http://example.org/predicate',
+        object: 'http://example.org/object',
+      });
       expect(validateDocument(doc)).toBe(false);
     });
   });
@@ -192,15 +223,21 @@ describe('Turtle Module', () => {
 
   describe('helper functions', () => {
     test('iri should return the URI as-is', () => {
-      expect(iri('http://example.org/resource')).toBe('http://example.org/resource');
+      expect(iri('http://example.org/resource')).toBe(
+        'http://example.org/resource',
+      );
     });
 
     test('literal should create literal object', () => {
-      const result = literal('Hello', 'http://www.w3.org/2001/XMLSchema#string', 'en');
+      const result = literal(
+        'Hello',
+        'http://www.w3.org/2001/XMLSchema#string',
+        'en',
+      );
       expect(result).toEqual({
         value: 'Hello',
         datatype: 'http://www.w3.org/2001/XMLSchema#string',
-        language: 'en'
+        language: 'en',
       });
     });
 
@@ -209,11 +246,15 @@ describe('Turtle Module', () => {
     });
 
     test('triple should create triple object', () => {
-      const result = triple('http://example.org/s', 'http://example.org/p', 'http://example.org/o');
+      const result = triple(
+        'http://example.org/s',
+        'http://example.org/p',
+        'http://example.org/o',
+      );
       expect(result).toEqual({
         subject: 'http://example.org/s',
         predicate: 'http://example.org/p',
-        object: 'http://example.org/o'
+        object: 'http://example.org/o',
       });
     });
   });
@@ -224,7 +265,9 @@ describe('Turtle Module', () => {
       addType(doc, 'http://example.org/subject', 'http://example.org/Person');
 
       expect(doc.triples).toHaveLength(1);
-      expect(doc.triples[0].predicate).toBe('http://www.w3.org/1999/02/22-rdf-syntax-ns#type');
+      expect(doc.triples[0].predicate).toBe(
+        'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+      );
     });
 
     test('addLabel should add rdfs:label triple with literal', () => {
@@ -245,7 +288,12 @@ describe('Turtle Module', () => {
 
     test('addStringProperty should add property with string literal', () => {
       const doc = createDocument();
-      addStringProperty(doc, 'http://example.org/subject', 'http://example.org/name', 'John');
+      addStringProperty(
+        doc,
+        'http://example.org/subject',
+        'http://example.org/name',
+        'John',
+      );
 
       expect(doc.triples[0].predicate).toBe('http://example.org/name');
       expect(doc.triples[0].object).toEqual({ value: 'John' });
@@ -253,27 +301,43 @@ describe('Turtle Module', () => {
 
     test('addIntegerProperty should add property with integer literal', () => {
       const doc = createDocument();
-      addIntegerProperty(doc, 'http://example.org/subject', 'http://example.org/age', 25);
+      addIntegerProperty(
+        doc,
+        'http://example.org/subject',
+        'http://example.org/age',
+        25,
+      );
 
       expect(doc.triples[0].object).toEqual({
         value: '25',
-        datatype: 'http://www.w3.org/2001/XMLSchema#integer'
+        datatype: 'http://www.w3.org/2001/XMLSchema#integer',
       });
     });
 
     test('addBooleanProperty should add property with boolean literal', () => {
       const doc = createDocument();
-      addBooleanProperty(doc, 'http://example.org/subject', 'http://example.org/active', true);
+      addBooleanProperty(
+        doc,
+        'http://example.org/subject',
+        'http://example.org/active',
+        true,
+      );
 
       expect(doc.triples[0].object).toEqual({
         value: 'true',
-        datatype: 'http://www.w3.org/2001/XMLSchema#boolean'
+        datatype: 'http://www.w3.org/2001/XMLSchema#boolean',
       });
     });
 
     test('createURI should properly encode path segments', () => {
-      const uri = createURI('http://example.org', 'path with spaces', 'special/chars');
-      expect(uri).toBe('http://example.org/path%20with%20spaces/special%2Fchars');
+      const uri = createURI(
+        'http://example.org',
+        'path with spaces',
+        'special/chars',
+      );
+      expect(uri).toBe(
+        'http://example.org/path%20with%20spaces/special%2Fchars',
+      );
     });
 
     test('createPrefixedURI should create prefixed URI', () => {
@@ -284,8 +348,16 @@ describe('Turtle Module', () => {
     test('addMultipleTriples should add multiple triples at once', () => {
       const doc = createDocument();
       const triples = [
-        { subject: 'http://example.org/s1', predicate: 'http://example.org/p1', object: 'http://example.org/o1' },
-        { subject: 'http://example.org/s2', predicate: 'http://example.org/p2', object: 'http://example.org/o2' }
+        {
+          subject: 'http://example.org/s1',
+          predicate: 'http://example.org/p1',
+          object: 'http://example.org/o1',
+        },
+        {
+          subject: 'http://example.org/s2',
+          predicate: 'http://example.org/p2',
+          object: 'http://example.org/o2',
+        },
       ];
 
       addMultipleTriples(doc, triples);
@@ -320,19 +392,44 @@ describe('Turtle Module', () => {
       addPrefix(doc, 'ex', 'http://example.org/');
 
       // Add triples
-      addTriple(doc, 'http://example.org/Person', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class');
-      addTriple(doc, 'http://example.org/john', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://example.org/Person');
-      addTriple(doc, 'http://example.org/john', 'http://www.w3.org/2000/01/rdf-schema#label', literal('John Doe'));
+      addTriple(
+        doc,
+        'http://example.org/Person',
+        'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+        'http://www.w3.org/2000/01/rdf-schema#Class',
+      );
+      addTriple(
+        doc,
+        'http://example.org/john',
+        'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+        'http://example.org/Person',
+      );
+      addTriple(
+        doc,
+        'http://example.org/john',
+        'http://www.w3.org/2000/01/rdf-schema#label',
+        literal('John Doe'),
+      );
 
       const result = serializeDocument(doc);
 
-      expect(result).toContain('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .');
-      expect(result).toContain('@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .');
+      expect(result).toContain(
+        '@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .',
+      );
+      expect(result).toContain(
+        '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
+      );
       expect(result).toContain('@prefix ex: <http://example.org/> .');
-      expect(result).toContain('<http://example.org/Person> a <http://www.w3.org/2000/01/rdf-schema#Class> .');
-      expect(result).toContain('<http://example.org/john> a <http://example.org/Person>');
+      expect(result).toContain(
+        '<http://example.org/Person> a <http://www.w3.org/2000/01/rdf-schema#Class> .',
+      );
+      expect(result).toContain(
+        '<http://example.org/john> a <http://example.org/Person>',
+      );
       expect(result).toContain('<http://example.org/john>');
-      expect(result).toContain('<http://www.w3.org/2000/01/rdf-schema#label> "John Doe"');
+      expect(result).toContain(
+        '<http://www.w3.org/2000/01/rdf-schema#label> "John Doe"',
+      );
     });
 
     test('should create document using helper functions', () => {
@@ -344,16 +441,34 @@ describe('Turtle Module', () => {
       addPrefix(doc, 'ex', 'http://example.org/');
 
       // Use helper functions
-      addType(doc, 'http://example.org/Person', 'http://www.w3.org/2000/01/rdf-schema#Class');
+      addType(
+        doc,
+        'http://example.org/Person',
+        'http://www.w3.org/2000/01/rdf-schema#Class',
+      );
       addType(doc, 'http://example.org/john', 'http://example.org/Person');
       addLabel(doc, 'http://example.org/john', 'John Doe');
-      addStringProperty(doc, 'http://example.org/john', 'http://example.org/email', 'john@example.org');
-      addIntegerProperty(doc, 'http://example.org/john', 'http://example.org/age', 30);
+      addStringProperty(
+        doc,
+        'http://example.org/john',
+        'http://example.org/email',
+        'john@example.org',
+      );
+      addIntegerProperty(
+        doc,
+        'http://example.org/john',
+        'http://example.org/age',
+        30,
+      );
 
       const result = serializeDocument(doc);
 
-      expect(result).toContain('<http://example.org/Person> a <http://www.w3.org/2000/01/rdf-schema#Class> .');
-      expect(result).toContain('<http://example.org/john> a <http://example.org/Person>');
+      expect(result).toContain(
+        '<http://example.org/Person> a <http://www.w3.org/2000/01/rdf-schema#Class> .',
+      );
+      expect(result).toContain(
+        '<http://example.org/john> a <http://example.org/Person>',
+      );
       expect(result).toContain('<http://example.org/john>');
       expect(result).toContain('rdfs:label "John Doe"');
       expect(result).toContain('<http://example.org/email> "john@example.org"');
@@ -361,4 +476,3 @@ describe('Turtle Module', () => {
     });
   });
 });
-

@@ -1,18 +1,14 @@
-import type {
-  ConlluDocument,
-  ConlluSentence,
-  ConlluToken,
-} from "liita-textlinker-frontend/conllu";
+import type { ConlluDocument } from 'liita-textlinker-frontend/conllu';
 import {
-  createDocument,
-  addPrefix,
-  addType,
-  addLabel,
-  addStringProperty,
   addIntegerProperty,
+  addLabel,
+  addPrefix,
   addProperty,
-  serializeDocument,
+  addStringProperty,
+  addType,
+  createDocument,
   type IRI,
+  serializeDocument,
 } from './turtle';
 
 interface DocumentMetadata {
@@ -36,7 +32,7 @@ interface MISCField {
 
 // Constants for common URIs
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
+const _RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const DC_CONTRIBUTOR = 'http://purl.org/dc/elements/1.1/contributor';
 const DC_DESCRIPTION = 'http://purl.org/dc/elements/1.1/description';
 const DC_TITLE = 'http://purl.org/dc/elements/1.1/title';
@@ -56,22 +52,30 @@ const POWLA_FIRST_TERMINAL = 'http://purl.org/powla/powla.owl#firstTerminal';
 const POWLA_HAS_TERMINAL = 'http://purl.org/powla/powla.owl#hasTerminal';
 const POWLA_LAST_TERMINAL = 'http://purl.org/powla/powla.owl#lastTerminal';
 const POWLA_HAS_SUB_DOCUMENT = 'http://purl.org/powla/powla.owl#hasSubDocument';
-const LILA_CORPUS_CITATION_STRUCTURE = 'http://lila-erc.eu/ontologies/lila_corpora#CitationStructure';
-const LILA_CORPUS_CITATION_UNIT = 'http://lila-erc.eu/ontologies/lila_corpora#citationUnit';
-const LILA_CORPUS_SYNTACTIC_ANNOTATION = 'http://lila-erc.eu/ontologies/lila_corpora#SyntacticAnnotation';
+const LILA_CORPUS_CITATION_STRUCTURE =
+  'http://lila-erc.eu/ontologies/lila_corpora#CitationStructure';
+const LILA_CORPUS_CITATION_UNIT =
+  'http://lila-erc.eu/ontologies/lila_corpora#citationUnit';
+const LILA_CORPUS_SYNTACTIC_ANNOTATION =
+  'http://lila-erc.eu/ontologies/lila_corpora#SyntacticAnnotation';
 const LILA_CORPUS_FIRST = 'http://lila-erc.eu/ontologies/lila_corpora#first';
 const LILA_CORPUS_LAST = 'http://lila-erc.eu/ontologies/lila_corpora#last';
-const LILA_CORPUS_IS_LAYER = 'http://lila-erc.eu/ontologies/lila_corpora#isLayer';
-const LILA_CORPUS_HAS_CIT_LEVEL = 'http://lila-erc.eu/ontologies/lila_corpora#hasCitLevel';
-const LILA_CORPUS_HAS_REF_TYPE = 'http://lila-erc.eu/ontologies/lila_corpora#hasRefType';
-const LILA_CORPUS_HAS_REF_VALUE = 'http://lila-erc.eu/ontologies/lila_corpora#hasRefValue';
+const LILA_CORPUS_IS_LAYER =
+  'http://lila-erc.eu/ontologies/lila_corpora#isLayer';
+const LILA_CORPUS_HAS_CIT_LEVEL =
+  'http://lila-erc.eu/ontologies/lila_corpora#hasCitLevel';
+const LILA_CORPUS_HAS_REF_TYPE =
+  'http://lila-erc.eu/ontologies/lila_corpora#hasRefType';
+const LILA_CORPUS_HAS_REF_VALUE =
+  'http://lila-erc.eu/ontologies/lila_corpora#hasRefValue';
 const LILA_CORPUS_HAS_DEP = 'http://lila-erc.eu/ontologies/lila_corpora#hasDep';
-const LILA_CORPUS_HAS_HEAD = 'http://lila-erc.eu/ontologies/lila_corpora#hasHead';
+const LILA_CORPUS_HAS_HEAD =
+  'http://lila-erc.eu/ontologies/lila_corpora#hasHead';
 const LILA_ONTOLOGY_HAS_LEMMA = 'http://lila-erc.eu/ontologies/lila#hasLemma';
 const OA_ANNOTATION = 'http://www.w3.org/ns/oa#Annotation';
 const OA_HAS_BODY = 'http://www.w3.org/ns/oa#hasBody';
 const OA_HAS_TARGET = 'http://www.w3.org/ns/oa#hasTarget';
-const XSD_INTEGER = 'http://www.w3.org/2001/XMLSchema#integer';
+const _XSD_INTEGER = 'http://www.w3.org/2001/XMLSchema#integer';
 
 /**
  * Parse MISC field to extract structured information
@@ -117,7 +121,11 @@ function generateSentenceURI(docTitle: string, sentenceNum: number): IRI {
 /**
  * Generate token URI
  */
-function generateTokenURI(docTitle: string, sentNum: number, tokenId: number): IRI {
+function generateTokenURI(
+  docTitle: string,
+  sentNum: number,
+  tokenId: number,
+): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
   return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/CiteStructure/Sentence_${sentNum}/s${sentNum}t${tokenId}`;
 }
@@ -125,7 +133,11 @@ function generateTokenURI(docTitle: string, sentNum: number, tokenId: number): I
 /**
  * Generate UD dependency relation URI
  */
-function generateUDDepURI(docTitle: string, sentNum: number, tokenId: number): IRI {
+function generateUDDepURI(
+  docTitle: string,
+  sentNum: number,
+  tokenId: number,
+): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
   return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/UD/s${sentNum}t${tokenId}`;
 }
@@ -133,7 +145,10 @@ function generateUDDepURI(docTitle: string, sentNum: number, tokenId: number): I
 /**
  * Generate UD annotation layer sentence URI
  */
-function generateUDLayerSentenceURI(docTitle: string, sentenceNum: number): IRI {
+function generateUDLayerSentenceURI(
+  docTitle: string,
+  sentenceNum: number,
+): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
   return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/UDAnnotationLayer/Sentence_${sentenceNum}`;
 }
@@ -141,7 +156,11 @@ function generateUDLayerSentenceURI(docTitle: string, sentenceNum: number): IRI 
 /**
  * Generate UD morphology annotation URI
  */
-function generateMorphologyAnnotationURI(docTitle: string, sentNum: number, tokenId: number): IRI {
+function generateMorphologyAnnotationURI(
+  docTitle: string,
+  sentNum: number,
+  tokenId: number,
+): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
   return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/UDMorphologyAnnotationLayer/id/s${sentNum}t${tokenId}`;
 }
@@ -205,9 +224,12 @@ function toPrefixedURI(uri: string): string {
 /**
  * Convert CONLL-U document to TTL
  */
-export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetadata): string {
+export function conlluToTurtle(
+  document: ConlluDocument,
+  metadata: DocumentMetadata,
+): string {
   // Filter out sentences with no tokens (metadata-only sentences)
-  const validSentences = document.sentences.filter(s => s.tokens.length > 0);
+  const validSentences = document.sentences.filter((s) => s.tokens.length > 0);
 
   const doc = createDocument();
 
@@ -234,8 +256,18 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
 
   // Document metadata
   addType(doc, docURI, toPrefixedURI(POWLA_DOCUMENT));
-  addStringProperty(doc, docURI, toPrefixedURI(DC_CONTRIBUTOR), metadata.contributor);
-  addStringProperty(doc, docURI, toPrefixedURI(DC_DESCRIPTION), metadata.description);
+  addStringProperty(
+    doc,
+    docURI,
+    toPrefixedURI(DC_CONTRIBUTOR),
+    metadata.contributor,
+  );
+  addStringProperty(
+    doc,
+    docURI,
+    toPrefixedURI(DC_DESCRIPTION),
+    metadata.description,
+  );
   addStringProperty(doc, docURI, toPrefixedURI(DC_TITLE), metadata.docTitle);
   addProperty(doc, docURI, DC_TERMS_CREATOR, metadata.docAuthor); // No prefix for dc:terms
   addProperty(doc, docURI, toPrefixedURI(RDFS_SEE_ALSO), metadata.seeAlso);
@@ -246,23 +278,60 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
   // Document layer
   const docLayerURI = `${docURI}/DocumentLayer`;
   addType(doc, docLayerURI, toPrefixedURI(POWLA_DOCUMENT_LAYER));
-  addStringProperty(doc, docLayerURI, toPrefixedURI(DC_DESCRIPTION), `${metadata.docTitle} Document Layer`);
-  addStringProperty(doc, docLayerURI, toPrefixedURI(DC_TITLE), 'Document Layer');
+  addStringProperty(
+    doc,
+    docLayerURI,
+    toPrefixedURI(DC_DESCRIPTION),
+    `${metadata.docTitle} Document Layer`,
+  );
+  addStringProperty(
+    doc,
+    docLayerURI,
+    toPrefixedURI(DC_TITLE),
+    'Document Layer',
+  );
   addProperty(doc, docLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
 
   // Citation structure header
   const citeStructureURI = `${docURI}/CiteStructure`;
-  const sentenceURIs = validSentences.map((_, i) => generateSentenceURI(metadata.docTitle, i + 1));
+  const sentenceURIs = validSentences.map((_, i) =>
+    generateSentenceURI(metadata.docTitle, i + 1),
+  );
 
   addType(doc, citeStructureURI, toPrefixedURI(LILA_CORPUS_CITATION_STRUCTURE));
-  addProperty(doc, citeStructureURI, toPrefixedURI(LILA_CORPUS_FIRST), sentenceURIs[0]);
+  addProperty(
+    doc,
+    citeStructureURI,
+    toPrefixedURI(LILA_CORPUS_FIRST),
+    sentenceURIs[0],
+  );
   // Add multiple isLayer relationships
   for (const sentURI of sentenceURIs) {
-    addProperty(doc, citeStructureURI, toPrefixedURI(LILA_CORPUS_IS_LAYER), sentURI);
+    addProperty(
+      doc,
+      citeStructureURI,
+      toPrefixedURI(LILA_CORPUS_IS_LAYER),
+      sentURI,
+    );
   }
-  addProperty(doc, citeStructureURI, toPrefixedURI(LILA_CORPUS_LAST), sentenceURIs[sentenceURIs.length - 1]);
-  addStringProperty(doc, citeStructureURI, toPrefixedURI(DC_DESCRIPTION), `${metadata.docTitle} Citation Layer`);
-  addStringProperty(doc, citeStructureURI, toPrefixedURI(DC_TITLE), 'Citation Layer');
+  addProperty(
+    doc,
+    citeStructureURI,
+    toPrefixedURI(LILA_CORPUS_LAST),
+    sentenceURIs[sentenceURIs.length - 1],
+  );
+  addStringProperty(
+    doc,
+    citeStructureURI,
+    toPrefixedURI(DC_DESCRIPTION),
+    `${metadata.docTitle} Citation Layer`,
+  );
+  addStringProperty(
+    doc,
+    citeStructureURI,
+    toPrefixedURI(DC_TITLE),
+    'Citation Layer',
+  );
   addProperty(doc, citeStructureURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
 
   // Process sentences
@@ -272,25 +341,55 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
     const sentURI = generateSentenceURI(metadata.docTitle, sentNum);
 
     const tokenURIs = sentence.tokens.map((_, tIdx) =>
-      generateTokenURI(metadata.docTitle, sentNum, tIdx + 1)
+      generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
     );
 
     // Sentence citation unit
     addType(doc, sentURI, toPrefixedURI(LILA_CORPUS_CITATION_UNIT));
     addProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_FIRST), tokenURIs[0]);
-    addIntegerProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL), 1);
-    addStringProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE), 'Sentence');
-    addStringProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE), `Sentence_${sentNum}`);
-    addProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_LAST), tokenURIs[tokenURIs.length - 1]);
+    addIntegerProperty(
+      doc,
+      sentURI,
+      toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL),
+      1,
+    );
+    addStringProperty(
+      doc,
+      sentURI,
+      toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
+      'Sentence',
+    );
+    addStringProperty(
+      doc,
+      sentURI,
+      toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE),
+      `Sentence_${sentNum}`,
+    );
+    addProperty(
+      doc,
+      sentURI,
+      toPrefixedURI(LILA_CORPUS_LAST),
+      tokenURIs[tokenURIs.length - 1],
+    );
     // Add multiple hasChild relationships
     for (const tokenURI of tokenURIs) {
       addProperty(doc, sentURI, toPrefixedURI(POWLA_HAS_CHILD), tokenURI);
     }
     if (sIdx < validSentences.length - 1) {
-      addProperty(doc, sentURI, toPrefixedURI(POWLA_NEXT), generateSentenceURI(metadata.docTitle, sentNum + 1));
+      addProperty(
+        doc,
+        sentURI,
+        toPrefixedURI(POWLA_NEXT),
+        generateSentenceURI(metadata.docTitle, sentNum + 1),
+      );
     }
     if (sIdx > 0) {
-      addProperty(doc, sentURI, toPrefixedURI(POWLA_PREVIOUS), generateSentenceURI(metadata.docTitle, sentNum - 1));
+      addProperty(
+        doc,
+        sentURI,
+        toPrefixedURI(POWLA_PREVIOUS),
+        generateSentenceURI(metadata.docTitle, sentNum - 1),
+      );
     }
     addLabel(doc, sentURI, `Sentence ${sentNum}`);
 
@@ -311,18 +410,38 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
         if (id) {
           // Use prefixed URI format: prefix:localName
           const lemmaPrefixedURI = `${prefix}:${id}`;
-          addProperty(doc, tokenURI, toPrefixedURI(LILA_ONTOLOGY_HAS_LEMMA), lemmaPrefixedURI);
+          addProperty(
+            doc,
+            tokenURI,
+            toPrefixedURI(LILA_ONTOLOGY_HAS_LEMMA),
+            lemmaPrefixedURI,
+          );
         }
       }
 
       addProperty(doc, tokenURI, toPrefixedURI(POWLA_HAS_LAYER), docLayerURI);
-      addStringProperty(doc, tokenURI, toPrefixedURI(POWLA_HAS_STRING_VALUE), token.form);
+      addStringProperty(
+        doc,
+        tokenURI,
+        toPrefixedURI(POWLA_HAS_STRING_VALUE),
+        token.form,
+      );
 
       if (tIdx < sentence.tokens.length - 1) {
-        addProperty(doc, tokenURI, toPrefixedURI(POWLA_NEXT), tokenURIs[tIdx + 1]);
+        addProperty(
+          doc,
+          tokenURI,
+          toPrefixedURI(POWLA_NEXT),
+          tokenURIs[tIdx + 1],
+        );
       }
       if (tIdx > 0) {
-        addProperty(doc, tokenURI, toPrefixedURI(POWLA_PREVIOUS), tokenURIs[tIdx - 1]);
+        addProperty(
+          doc,
+          tokenURI,
+          toPrefixedURI(POWLA_PREVIOUS),
+          tokenURIs[tIdx - 1],
+        );
       }
 
       addLabel(doc, tokenURI, token.form);
@@ -332,18 +451,38 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
   // UD Annotation Layer
   const udLayerURI = `${docURI}/UDAnnotationLayer`;
   const udSentURIs = validSentences.map((_, i) =>
-    generateUDLayerSentenceURI(metadata.docTitle, i + 1)
+    generateUDLayerSentenceURI(metadata.docTitle, i + 1),
   );
 
   addType(doc, udLayerURI, toPrefixedURI(LILA_CORPUS_SYNTACTIC_ANNOTATION));
   addProperty(doc, udLayerURI, toPrefixedURI(LILA_CORPUS_FIRST), udSentURIs[0]);
   // Add multiple isLayer relationships
   for (const udSentURI of udSentURIs) {
-    addProperty(doc, udLayerURI, toPrefixedURI(LILA_CORPUS_IS_LAYER), udSentURI);
+    addProperty(
+      doc,
+      udLayerURI,
+      toPrefixedURI(LILA_CORPUS_IS_LAYER),
+      udSentURI,
+    );
   }
-  addProperty(doc, udLayerURI, toPrefixedURI(LILA_CORPUS_LAST), udSentURIs[udSentURIs.length - 1]);
-  addStringProperty(doc, udLayerURI, toPrefixedURI(DC_DESCRIPTION), `${metadata.docTitle} Universal Dependencies syntactic annotation layer`);
-  addStringProperty(doc, udLayerURI, toPrefixedURI(DC_TITLE), `${metadata.docTitle} UD Annotation Layer`);
+  addProperty(
+    doc,
+    udLayerURI,
+    toPrefixedURI(LILA_CORPUS_LAST),
+    udSentURIs[udSentURIs.length - 1],
+  );
+  addStringProperty(
+    doc,
+    udLayerURI,
+    toPrefixedURI(DC_DESCRIPTION),
+    `${metadata.docTitle} Universal Dependencies syntactic annotation layer`,
+  );
+  addStringProperty(
+    doc,
+    udLayerURI,
+    toPrefixedURI(DC_TITLE),
+    `${metadata.docTitle} UD Annotation Layer`,
+  );
   addProperty(doc, udLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
 
   // UD sentences and dependency relations
@@ -352,25 +491,60 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
     const sentNum = sIdx + 1;
     const udSentURI = udSentURIs[sIdx];
     const tokenURIs = sentence.tokens.map((_, tIdx) =>
-      generateTokenURI(metadata.docTitle, sentNum, tIdx + 1)
+      generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
     );
 
     // UD sentence root
     addType(doc, udSentURI, toPrefixedURI(POWLA_ROOT));
-    addIntegerProperty(doc, udSentURI, toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL), 1);
-    addStringProperty(doc, udSentURI, toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE), 'Sentence');
-    addStringProperty(doc, udSentURI, toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE), `Sentence_${sentNum}`);
-    addProperty(doc, udSentURI, toPrefixedURI(POWLA_FIRST_TERMINAL), tokenURIs[0]);
+    addIntegerProperty(
+      doc,
+      udSentURI,
+      toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL),
+      1,
+    );
+    addStringProperty(
+      doc,
+      udSentURI,
+      toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
+      'Sentence',
+    );
+    addStringProperty(
+      doc,
+      udSentURI,
+      toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE),
+      `Sentence_${sentNum}`,
+    );
+    addProperty(
+      doc,
+      udSentURI,
+      toPrefixedURI(POWLA_FIRST_TERMINAL),
+      tokenURIs[0],
+    );
     // Add multiple hasTerminal relationships
     for (const tokenURI of tokenURIs) {
       addProperty(doc, udSentURI, toPrefixedURI(POWLA_HAS_TERMINAL), tokenURI);
     }
-    addProperty(doc, udSentURI, toPrefixedURI(POWLA_LAST_TERMINAL), tokenURIs[tokenURIs.length - 1]);
+    addProperty(
+      doc,
+      udSentURI,
+      toPrefixedURI(POWLA_LAST_TERMINAL),
+      tokenURIs[tokenURIs.length - 1],
+    );
     if (sIdx < validSentences.length - 1) {
-      addProperty(doc, udSentURI, toPrefixedURI(POWLA_NEXT), udSentURIs[sIdx + 1]);
+      addProperty(
+        doc,
+        udSentURI,
+        toPrefixedURI(POWLA_NEXT),
+        udSentURIs[sIdx + 1],
+      );
     }
     if (sIdx > 0) {
-      addProperty(doc, udSentURI, toPrefixedURI(POWLA_PREVIOUS), udSentURIs[sIdx - 1]);
+      addProperty(
+        doc,
+        udSentURI,
+        toPrefixedURI(POWLA_PREVIOUS),
+        udSentURIs[sIdx - 1],
+      );
     }
     addLabel(doc, udSentURI, `Sentence ${sentNum}`);
 
@@ -380,14 +554,18 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
       const depURI = generateUDDepURI(metadata.docTitle, sentNum, tIdx + 1);
 
       // Find head
-      const headIndex = token.head && token.head !== '_' && token.head !== '0'
-        ? parseInt(token.head, 10) - 1
-        : undefined;
+      const headIndex =
+        token.head && token.head !== '_' && token.head !== '0'
+          ? parseInt(token.head, 10) - 1
+          : undefined;
 
       const depTokenURI = tokenURIs[tIdx];
-      const headTokenURI = headIndex !== undefined && headIndex >= 0 && headIndex < tokenURIs.length
-        ? tokenURIs[headIndex]
-        : undefined;
+      const headTokenURI =
+        headIndex !== undefined &&
+        headIndex >= 0 &&
+        headIndex < tokenURIs.length
+          ? tokenURIs[headIndex]
+          : undefined;
 
       // Use prefixed URI format for UD_tag:deprel
       const deprelType = `UD_tag:${token.deprel || 'root'}`;
@@ -395,9 +573,19 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
       addProperty(doc, depURI, toPrefixedURI(LILA_CORPUS_HAS_DEP), depTokenURI);
 
       if (token.deprel === 'root' || headTokenURI === undefined) {
-        addProperty(doc, depURI, toPrefixedURI(LILA_CORPUS_HAS_HEAD), udSentURI);
+        addProperty(
+          doc,
+          depURI,
+          toPrefixedURI(LILA_CORPUS_HAS_HEAD),
+          udSentURI,
+        );
       } else if (headTokenURI) {
-        addProperty(doc, depURI, toPrefixedURI(LILA_CORPUS_HAS_HEAD), headTokenURI);
+        addProperty(
+          doc,
+          depURI,
+          toPrefixedURI(LILA_CORPUS_HAS_HEAD),
+          headTokenURI,
+        );
       }
 
       addLabel(doc, depURI, `UD DepRel ${token.deprel || 'root'}`);
@@ -407,8 +595,18 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
   // Morphology annotation layer
   const morphLayerURI = `${docURI}/UDMorphologyAnnotationLayer`;
   addType(doc, morphLayerURI, toPrefixedURI(POWLA_DOCUMENT_LAYER));
-  addStringProperty(doc, morphLayerURI, toPrefixedURI(DC_DESCRIPTION), `${metadata.docTitle} Morphology Annotation Layer`);
-  addStringProperty(doc, morphLayerURI, toPrefixedURI(DC_TITLE), 'UD Morphology Annotation Layer');
+  addStringProperty(
+    doc,
+    morphLayerURI,
+    toPrefixedURI(DC_DESCRIPTION),
+    `${metadata.docTitle} Morphology Annotation Layer`,
+  );
+  addStringProperty(
+    doc,
+    morphLayerURI,
+    toPrefixedURI(DC_TITLE),
+    'UD Morphology Annotation Layer',
+  );
   addProperty(doc, morphLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
 
   // Morphology annotations
@@ -418,7 +616,11 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
 
     for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
       const token = sentence.tokens[tIdx];
-      const morphURI = generateMorphologyAnnotationURI(metadata.docTitle, sentNum, tIdx + 1);
+      const morphURI = generateMorphologyAnnotationURI(
+        metadata.docTitle,
+        sentNum,
+        tIdx + 1,
+      );
       const tokenURI = generateTokenURI(metadata.docTitle, sentNum, tIdx + 1);
 
       const features = featuresToUDURLs(token.feats);
@@ -433,7 +635,12 @@ export function conlluToTurtle(document: ConlluDocument, metadata: DocumentMetad
           addProperty(doc, morphURI, toPrefixedURI(OA_HAS_BODY), feature);
         }
       } else {
-        addProperty(doc, morphURI, toPrefixedURI(OA_HAS_BODY), 'https://universaldependencies.org/it/feat/' as IRI);
+        addProperty(
+          doc,
+          morphURI,
+          toPrefixedURI(OA_HAS_BODY),
+          'https://universaldependencies.org/it/feat/' as IRI,
+        );
       }
 
       addProperty(doc, morphURI, toPrefixedURI(OA_HAS_TARGET), tokenURI);

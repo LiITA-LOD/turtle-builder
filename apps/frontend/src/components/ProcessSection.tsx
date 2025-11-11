@@ -21,7 +21,14 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
       <Divider sx={{ mb: 3 }} />
 
       <Box sx={{ textAlign: 'center', py: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 2,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
           <Button
             variant="contained"
             size="large"

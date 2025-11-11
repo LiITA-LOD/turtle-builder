@@ -1,23 +1,23 @@
-import { Upload as UploadIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  Delete as DeleteIcon,
+  Upload as UploadIcon,
+} from '@mui/icons-material';
 import {
   Box,
   Button,
   Divider,
   IconButton,
-  Typography,
   Paper,
+  Typography,
 } from '@mui/material';
-import React from 'react';
+import type React from 'react';
 
 interface FileUploadProps {
   file: File | null;
   onFileChange: (file: File | null) => void;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({
-  file,
-  onFileChange,
-}) => {
+const FileUpload: React.FC<FileUploadProps> = ({ file, onFileChange }) => {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -54,17 +54,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
               ({(file.size / 1024).toFixed(1)} KB)
             </Typography>
           </Box>
-          <IconButton
-            onClick={removeFile}
-            color="error"
-            title="Remove file"
-          >
+          <IconButton onClick={removeFile} color="error" title="Remove file">
             <DeleteIcon />
           </IconButton>
         </Paper>
       )}
 
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box
+        sx={{
+          mb: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <Typography variant="h6">
           {file ? 'File Uploaded' : 'No file uploaded'}
         </Typography>
@@ -93,4 +96,3 @@ const FileUpload: React.FC<FileUploadProps> = ({
 };
 
 export default FileUpload;
-

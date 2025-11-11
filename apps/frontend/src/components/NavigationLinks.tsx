@@ -1,13 +1,14 @@
+import { ArrowDropDown } from '@mui/icons-material';
 import {
   Box,
   Button,
+  CircularProgress,
   Link,
   Menu,
   MenuItem,
-  CircularProgress,
 } from '@mui/material';
-import { ArrowDropDown } from '@mui/icons-material';
-import React, { useEffect, useState, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface GitHubRepo {
   name: string;
@@ -113,13 +114,15 @@ const NavigationLinks: React.FC = () => {
   useEffect(() => {
     const fetchLiitaTools = async () => {
       try {
-        const response = await fetch('https://api.github.com/users/LiITA-LOD/repos');
+        const response = await fetch(
+          'https://api.github.com/users/LiITA-LOD/repos',
+        );
         if (!response.ok) {
           throw new Error('Failed to fetch repositories');
         }
         const repos: GitHubRepo[] = await response.json();
         const filteredRepos = repos.filter((repo) =>
-          repo.topics.includes('liita-toolkit')
+          repo.topics.includes('liita-toolkit'),
         );
         // Sort by name alphabetically
         filteredRepos.sort((a, b) => a.name.localeCompare(b.name));
@@ -145,7 +148,14 @@ const NavigationLinks: React.FC = () => {
   }));
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+      }}
+    >
       <Link
         href="https://liita.it"
         target="_blank"

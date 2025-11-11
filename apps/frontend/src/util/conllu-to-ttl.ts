@@ -1,11 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { parse, type ConlluDocument } from 'liita-textlinker-frontend/conllu';
-import {
-  conlluToTurtle,
-  extractMetadata,
-  type DocumentMetadata,
-} from './ttl.js';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { type ConlluDocument, parse } from 'liita-textlinker-frontend/conllu';
+import { conlluToTurtle, extractMetadata } from './ttl.js';
 
 /**
  * Convert CONLL-U file to Turtle format
@@ -60,5 +56,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { convertConlluToTurtle };
-
-
