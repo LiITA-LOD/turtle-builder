@@ -19,6 +19,8 @@ const Main: React.FC = () => {
   });
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [includeCitationLayer, setIncludeCitationLayer] = useState(true);
+  const [includeMorphologicalLayer, setIncludeMorphologicalLayer] = useState(false);
 
   const extractMetadataFromContent = (content: string): Metadata => {
     const lines = content.split('\n');
@@ -170,7 +172,10 @@ const Main: React.FC = () => {
       };
 
       // Convert to Turtle format
-      const turtleContent = conlluToTurtle(document, documentMetadata);
+      const turtleContent = conlluToTurtle(document, documentMetadata, {
+        includeCitationLayer,
+        includeMorphologicalLayer,
+      });
 
       // Determine filename based on docTitle or use default
       const filename = metadata.docTitle
@@ -220,6 +225,10 @@ const Main: React.FC = () => {
         uploadedFile={uploadedFile}
         onProcess={handleProcess}
         onDownloadTurtle={handleDownloadTurtle}
+        includeCitationLayer={includeCitationLayer}
+        includeMorphologicalLayer={includeMorphologicalLayer}
+        onCitationLayerChange={setIncludeCitationLayer}
+        onMorphologicalLayerChange={setIncludeMorphologicalLayer}
       />
     </Box>
   );

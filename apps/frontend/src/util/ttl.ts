@@ -222,12 +222,27 @@ function toPrefixedURI(uri: string): string {
 }
 
 /**
+ * Options for controlling which layers to include in the output
+ */
+export interface ConlluToTurtleOptions {
+  /** Include citation layer (default: true) */
+  includeCitationLayer?: boolean;
+  /** Include morphological layer (default: true) */
+  includeMorphologicalLayer?: boolean;
+}
+
+/**
  * Convert CONLL-U document to TTL
  */
 export function conlluToTurtle(
   document: ConlluDocument,
   metadata: DocumentMetadata,
+  options?: ConlluToTurtleOptions,
 ): string {
+  const {
+    includeCitationLayer = true,
+    includeMorphologicalLayer = true,
+  } = options || {};
   // Filter out sentences with no tokens (metadata-only sentences)
   const validSentences = document.sentences.filter((s) => s.tokens.length > 0);
 
@@ -293,158 +308,225 @@ export function conlluToTurtle(
   addProperty(doc, docLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
 
   // Citation structure header
-  const citeStructureURI = `${docURI}/CiteStructure`;
-  const sentenceURIs = validSentences.map((_, i) =>
-    generateSentenceURI(metadata.docTitle, i + 1),
-  );
+  if (includeCitationLayer) {
+    const citeStructureURI = `${docURI}/CiteStructure`;
+    const sentenceURIs = validSentences.map((_, i) =>
+      generateSentenceURI(metadata.docTitle, i + 1),
+    );
 
-  addType(doc, citeStructureURI, toPrefixedURI(LILA_CORPUS_CITATION_STRUCTURE));
-  addProperty(
-    doc,
-    citeStructureURI,
-    toPrefixedURI(LILA_CORPUS_FIRST),
-    sentenceURIs[0],
-  );
-  // Add multiple isLayer relationships
-  for (const sentURI of sentenceURIs) {
+    addType(doc, citeStructureURI, toPrefixedURI(LILA_CORPUS_CITATION_STRUCTURE));
     addProperty(
       doc,
       citeStructureURI,
-      toPrefixedURI(LILA_CORPUS_IS_LAYER),
-      sentURI,
+      toPrefixedURI(LILA_CORPUS_FIRST),
+      sentenceURIs[0],
     );
-  }
-  addProperty(
-    doc,
-    citeStructureURI,
-    toPrefixedURI(LILA_CORPUS_LAST),
-    sentenceURIs[sentenceURIs.length - 1],
-  );
-  addStringProperty(
-    doc,
-    citeStructureURI,
-    toPrefixedURI(DC_DESCRIPTION),
-    `${metadata.docTitle} Citation Layer`,
-  );
-  addStringProperty(
-    doc,
-    citeStructureURI,
-    toPrefixedURI(DC_TITLE),
-    'Citation Layer',
-  );
-  addProperty(doc, citeStructureURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
-
-  // Process sentences
-  for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
-    const sentence = validSentences[sIdx];
-    const sentNum = sIdx + 1;
-    const sentURI = generateSentenceURI(metadata.docTitle, sentNum);
-
-    const tokenURIs = sentence.tokens.map((_, tIdx) =>
-      generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
-    );
-
-    // Sentence citation unit
-    addType(doc, sentURI, toPrefixedURI(LILA_CORPUS_CITATION_UNIT));
-    addProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_FIRST), tokenURIs[0]);
-    addIntegerProperty(
-      doc,
-      sentURI,
-      toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL),
-      1,
-    );
-    addStringProperty(
-      doc,
-      sentURI,
-      toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
-      'Sentence',
-    );
-    addStringProperty(
-      doc,
-      sentURI,
-      toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE),
-      `Sentence_${sentNum}`,
-    );
+    // Add multiple isLayer relationships
+    for (const sentURI of sentenceURIs) {
+      addProperty(
+        doc,
+        citeStructureURI,
+        toPrefixedURI(LILA_CORPUS_IS_LAYER),
+        sentURI,
+      );
+    }
     addProperty(
       doc,
-      sentURI,
+      citeStructureURI,
       toPrefixedURI(LILA_CORPUS_LAST),
-      tokenURIs[tokenURIs.length - 1],
+      sentenceURIs[sentenceURIs.length - 1],
     );
-    // Add multiple hasChild relationships
-    for (const tokenURI of tokenURIs) {
-      addProperty(doc, sentURI, toPrefixedURI(POWLA_HAS_CHILD), tokenURI);
-    }
-    if (sIdx < validSentences.length - 1) {
+    addStringProperty(
+      doc,
+      citeStructureURI,
+      toPrefixedURI(DC_DESCRIPTION),
+      `${metadata.docTitle} Citation Layer`,
+    );
+    addStringProperty(
+      doc,
+      citeStructureURI,
+      toPrefixedURI(DC_TITLE),
+      'Citation Layer',
+    );
+    addProperty(doc, citeStructureURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
+
+    // Process sentences
+    for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
+      const sentence = validSentences[sIdx];
+      const sentNum = sIdx + 1;
+      const sentURI = generateSentenceURI(metadata.docTitle, sentNum);
+
+      const tokenURIs = sentence.tokens.map((_, tIdx) =>
+        generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
+      );
+
+      // Sentence citation unit
+      addType(doc, sentURI, toPrefixedURI(LILA_CORPUS_CITATION_UNIT));
+      addProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_FIRST), tokenURIs[0]);
+      addIntegerProperty(
+        doc,
+        sentURI,
+        toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL),
+        1,
+      );
+      addStringProperty(
+        doc,
+        sentURI,
+        toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
+        'Sentence',
+      );
+      addStringProperty(
+        doc,
+        sentURI,
+        toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE),
+        `Sentence_${sentNum}`,
+      );
       addProperty(
         doc,
         sentURI,
-        toPrefixedURI(POWLA_NEXT),
-        generateSentenceURI(metadata.docTitle, sentNum + 1),
+        toPrefixedURI(LILA_CORPUS_LAST),
+        tokenURIs[tokenURIs.length - 1],
       );
-    }
-    if (sIdx > 0) {
-      addProperty(
-        doc,
-        sentURI,
-        toPrefixedURI(POWLA_PREVIOUS),
-        generateSentenceURI(metadata.docTitle, sentNum - 1),
-      );
-    }
-    addLabel(doc, sentURI, `Sentence ${sentNum}`);
+      // Add multiple hasChild relationships
+      for (const tokenURI of tokenURIs) {
+        addProperty(doc, sentURI, toPrefixedURI(POWLA_HAS_CHILD), tokenURI);
+      }
+      if (sIdx < validSentences.length - 1) {
+        addProperty(
+          doc,
+          sentURI,
+          toPrefixedURI(POWLA_NEXT),
+          generateSentenceURI(metadata.docTitle, sentNum + 1),
+        );
+      }
+      if (sIdx > 0) {
+        addProperty(
+          doc,
+          sentURI,
+          toPrefixedURI(POWLA_PREVIOUS),
+          generateSentenceURI(metadata.docTitle, sentNum - 1),
+        );
+      }
+      addLabel(doc, sentURI, `Sentence ${sentNum}`);
 
-    // Tokens in sentence
-    for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
-      const token = sentence.tokens[tIdx];
-      const tokenURI = tokenURIs[tIdx];
-      const miscData = parseMiscField(token.misc);
+      // Tokens in sentence
+      for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
+        const token = sentence.tokens[tIdx];
+        const tokenURI = tokenURIs[tIdx];
+        const miscData = parseMiscField(token.misc);
 
-      addType(doc, tokenURI, toPrefixedURI(POWLA_TERMINAL));
+        addType(doc, tokenURI, toPrefixedURI(POWLA_TERMINAL));
 
-      // Add lemma if present
-      const lemmas = miscData.LiITALinkedURIs || [];
-      if (lemmas.length > 0) {
-        const lemmaURI = lemmas[0];
-        const prefix = getLemmaPrefix(lemmaURI);
-        const id = extractLemmaId(lemmaURI);
-        if (id) {
-          // Use prefixed URI format: prefix:localName
-          const lemmaPrefixedURI = `${prefix}:${id}`;
+        // Add lemma if present
+        const lemmas = miscData.LiITALinkedURIs || [];
+        if (lemmas.length > 0) {
+          const lemmaURI = lemmas[0];
+          const prefix = getLemmaPrefix(lemmaURI);
+          const id = extractLemmaId(lemmaURI);
+          if (id) {
+            // Use prefixed URI format: prefix:localName
+            const lemmaPrefixedURI = `${prefix}:${id}`;
+            addProperty(
+              doc,
+              tokenURI,
+              toPrefixedURI(LILA_ONTOLOGY_HAS_LEMMA),
+              lemmaPrefixedURI,
+            );
+          }
+        }
+
+        addProperty(doc, tokenURI, toPrefixedURI(POWLA_HAS_LAYER), docLayerURI);
+        addStringProperty(
+          doc,
+          tokenURI,
+          toPrefixedURI(POWLA_HAS_STRING_VALUE),
+          token.form,
+        );
+
+        if (tIdx < sentence.tokens.length - 1) {
           addProperty(
             doc,
             tokenURI,
-            toPrefixedURI(LILA_ONTOLOGY_HAS_LEMMA),
-            lemmaPrefixedURI,
+            toPrefixedURI(POWLA_NEXT),
+            tokenURIs[tIdx + 1],
           );
         }
-      }
+        if (tIdx > 0) {
+          addProperty(
+            doc,
+            tokenURI,
+            toPrefixedURI(POWLA_PREVIOUS),
+            tokenURIs[tIdx - 1],
+          );
+        }
 
-      addProperty(doc, tokenURI, toPrefixedURI(POWLA_HAS_LAYER), docLayerURI);
-      addStringProperty(
-        doc,
-        tokenURI,
-        toPrefixedURI(POWLA_HAS_STRING_VALUE),
-        token.form,
+        addLabel(doc, tokenURI, token.form);
+      }
+    }
+  } else {
+    // Even if citation layer is disabled, we still need to create tokens
+    // for the UD layer and morphological layer to reference
+    for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
+      const sentence = validSentences[sIdx];
+      const sentNum = sIdx + 1;
+
+      const tokenURIs = sentence.tokens.map((_, tIdx) =>
+        generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
       );
 
-      if (tIdx < sentence.tokens.length - 1) {
-        addProperty(
-          doc,
-          tokenURI,
-          toPrefixedURI(POWLA_NEXT),
-          tokenURIs[tIdx + 1],
-        );
-      }
-      if (tIdx > 0) {
-        addProperty(
-          doc,
-          tokenURI,
-          toPrefixedURI(POWLA_PREVIOUS),
-          tokenURIs[tIdx - 1],
-        );
-      }
+      // Tokens in sentence (without citation structure)
+      for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
+        const token = sentence.tokens[tIdx];
+        const tokenURI = tokenURIs[tIdx];
+        const miscData = parseMiscField(token.misc);
 
-      addLabel(doc, tokenURI, token.form);
+        addType(doc, tokenURI, toPrefixedURI(POWLA_TERMINAL));
+
+        // Add lemma if present
+        const lemmas = miscData.LiITALinkedURIs || [];
+        if (lemmas.length > 0) {
+          const lemmaURI = lemmas[0];
+          const prefix = getLemmaPrefix(lemmaURI);
+          const id = extractLemmaId(lemmaURI);
+          if (id) {
+            // Use prefixed URI format: prefix:localName
+            const lemmaPrefixedURI = `${prefix}:${id}`;
+            addProperty(
+              doc,
+              tokenURI,
+              toPrefixedURI(LILA_ONTOLOGY_HAS_LEMMA),
+              lemmaPrefixedURI,
+            );
+          }
+        }
+
+        addProperty(doc, tokenURI, toPrefixedURI(POWLA_HAS_LAYER), docLayerURI);
+        addStringProperty(
+          doc,
+          tokenURI,
+          toPrefixedURI(POWLA_HAS_STRING_VALUE),
+          token.form,
+        );
+
+        if (tIdx < sentence.tokens.length - 1) {
+          addProperty(
+            doc,
+            tokenURI,
+            toPrefixedURI(POWLA_NEXT),
+            tokenURIs[tIdx + 1],
+          );
+        }
+        if (tIdx > 0) {
+          addProperty(
+            doc,
+            tokenURI,
+            toPrefixedURI(POWLA_PREVIOUS),
+            tokenURIs[tIdx - 1],
+          );
+        }
+
+        addLabel(doc, tokenURI, token.form);
+      }
     }
   }
 
@@ -548,102 +630,106 @@ export function conlluToTurtle(
     }
     addLabel(doc, udSentURI, `Sentence ${sentNum}`);
 
-    // Dependency relations
-    for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
-      const token = sentence.tokens[tIdx];
-      const depURI = generateUDDepURI(metadata.docTitle, sentNum, tIdx + 1);
+    // Dependency relations (part of morphological layer)
+    if (includeMorphologicalLayer) {
+      for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
+        const token = sentence.tokens[tIdx];
+        const depURI = generateUDDepURI(metadata.docTitle, sentNum, tIdx + 1);
 
-      // Find head
-      const headIndex =
-        token.head && token.head !== '_' && token.head !== '0'
-          ? parseInt(token.head, 10) - 1
-          : undefined;
+        // Find head
+        const headIndex =
+          token.head && token.head !== '_' && token.head !== '0'
+            ? parseInt(token.head, 10) - 1
+            : undefined;
 
-      const depTokenURI = tokenURIs[tIdx];
-      const headTokenURI =
-        headIndex !== undefined &&
-        headIndex >= 0 &&
-        headIndex < tokenURIs.length
-          ? tokenURIs[headIndex]
-          : undefined;
+        const depTokenURI = tokenURIs[tIdx];
+        const headTokenURI =
+          headIndex !== undefined &&
+          headIndex >= 0 &&
+          headIndex < tokenURIs.length
+            ? tokenURIs[headIndex]
+            : undefined;
 
-      // Use prefixed URI format for UD_tag:deprel
-      const deprelType = `UD_tag:${token.deprel || 'root'}`;
-      addProperty(doc, depURI, toPrefixedURI(RDF_TYPE), deprelType);
-      addProperty(doc, depURI, toPrefixedURI(LILA_CORPUS_HAS_DEP), depTokenURI);
+        // Use prefixed URI format for UD_tag:deprel
+        const deprelType = `UD_tag:${token.deprel || 'root'}`;
+        addProperty(doc, depURI, toPrefixedURI(RDF_TYPE), deprelType);
+        addProperty(doc, depURI, toPrefixedURI(LILA_CORPUS_HAS_DEP), depTokenURI);
 
-      if (token.deprel === 'root' || headTokenURI === undefined) {
-        addProperty(
-          doc,
-          depURI,
-          toPrefixedURI(LILA_CORPUS_HAS_HEAD),
-          udSentURI,
-        );
-      } else if (headTokenURI) {
-        addProperty(
-          doc,
-          depURI,
-          toPrefixedURI(LILA_CORPUS_HAS_HEAD),
-          headTokenURI,
-        );
+        if (token.deprel === 'root' || headTokenURI === undefined) {
+          addProperty(
+            doc,
+            depURI,
+            toPrefixedURI(LILA_CORPUS_HAS_HEAD),
+            udSentURI,
+          );
+        } else if (headTokenURI) {
+          addProperty(
+            doc,
+            depURI,
+            toPrefixedURI(LILA_CORPUS_HAS_HEAD),
+            headTokenURI,
+          );
+        }
+
+        addLabel(doc, depURI, `UD DepRel ${token.deprel || 'root'}`);
       }
-
-      addLabel(doc, depURI, `UD DepRel ${token.deprel || 'root'}`);
     }
   }
 
   // Morphology annotation layer
-  const morphLayerURI = `${docURI}/UDMorphologyAnnotationLayer`;
-  addType(doc, morphLayerURI, toPrefixedURI(POWLA_DOCUMENT_LAYER));
-  addStringProperty(
-    doc,
-    morphLayerURI,
-    toPrefixedURI(DC_DESCRIPTION),
-    `${metadata.docTitle} Morphology Annotation Layer`,
-  );
-  addStringProperty(
-    doc,
-    morphLayerURI,
-    toPrefixedURI(DC_TITLE),
-    'UD Morphology Annotation Layer',
-  );
-  addProperty(doc, morphLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
+  if (includeMorphologicalLayer) {
+    const morphLayerURI = `${docURI}/UDMorphologyAnnotationLayer`;
+    addType(doc, morphLayerURI, toPrefixedURI(POWLA_DOCUMENT_LAYER));
+    addStringProperty(
+      doc,
+      morphLayerURI,
+      toPrefixedURI(DC_DESCRIPTION),
+      `${metadata.docTitle} Morphology Annotation Layer`,
+    );
+    addStringProperty(
+      doc,
+      morphLayerURI,
+      toPrefixedURI(DC_TITLE),
+      'UD Morphology Annotation Layer',
+    );
+    addProperty(doc, morphLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
 
-  // Morphology annotations
-  for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
-    const sentence = validSentences[sIdx];
-    const sentNum = sIdx + 1;
+    // Morphology annotations
+    for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
+      const sentence = validSentences[sIdx];
+      const sentNum = sIdx + 1;
 
-    for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
-      const token = sentence.tokens[tIdx];
-      const morphURI = generateMorphologyAnnotationURI(
-        metadata.docTitle,
-        sentNum,
-        tIdx + 1,
-      );
-      const tokenURI = generateTokenURI(metadata.docTitle, sentNum, tIdx + 1);
-
-      const features = featuresToUDURLs(token.feats);
-
-      addType(doc, morphURI, toPrefixedURI(OA_ANNOTATION));
-      addProperty(doc, morphURI, toPrefixedURI(POWLA_HAS_LAYER), morphLayerURI);
-      addLabel(doc, morphURI, `UD Features of ${token.form}`);
-
-      if (features.length > 0) {
-        // Add multiple hasBody relationships
-        for (const feature of features) {
-          addProperty(doc, morphURI, toPrefixedURI(OA_HAS_BODY), feature);
-        }
-      } else {
-        addProperty(
-          doc,
-          morphURI,
-          toPrefixedURI(OA_HAS_BODY),
-          'https://universaldependencies.org/it/feat/' as IRI,
+      for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
+        const token = sentence.tokens[tIdx];
+        const morphURI = generateMorphologyAnnotationURI(
+          metadata.docTitle,
+          sentNum,
+          tIdx + 1,
         );
-      }
+        const tokenURI = generateTokenURI(metadata.docTitle, sentNum, tIdx + 1);
 
-      addProperty(doc, morphURI, toPrefixedURI(OA_HAS_TARGET), tokenURI);
+        const features = featuresToUDURLs(token.feats);
+
+        addType(doc, morphURI, toPrefixedURI(OA_ANNOTATION));
+        addProperty(doc, morphURI, toPrefixedURI(POWLA_HAS_LAYER), morphLayerURI);
+        addLabel(doc, morphURI, `UD Features of ${token.form}`);
+
+        if (features.length > 0) {
+          // Add multiple hasBody relationships
+          for (const feature of features) {
+            addProperty(doc, morphURI, toPrefixedURI(OA_HAS_BODY), feature);
+          }
+        } else {
+          addProperty(
+            doc,
+            morphURI,
+            toPrefixedURI(OA_HAS_BODY),
+            'https://universaldependencies.org/it/feat/' as IRI,
+          );
+        }
+
+        addProperty(doc, morphURI, toPrefixedURI(OA_HAS_TARGET), tokenURI);
+      }
     }
   }
 

@@ -1,4 +1,11 @@
-import { Box, Button, Divider, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Divider,
+  FormControlLabel,
+  Typography,
+} from '@mui/material';
 import type React from 'react';
 import type { Metadata } from './MetadataInput';
 
@@ -7,6 +14,10 @@ interface ProcessSectionProps {
   uploadedFile: File | null;
   onProcess: () => void;
   onDownloadTurtle: () => void;
+  includeCitationLayer: boolean;
+  includeMorphologicalLayer: boolean;
+  onCitationLayerChange: (value: boolean) => void;
+  onMorphologicalLayerChange: (value: boolean) => void;
 }
 
 const ProcessSection: React.FC<ProcessSectionProps> = ({
@@ -14,6 +25,10 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
   uploadedFile,
   onProcess,
   onDownloadTurtle,
+  includeCitationLayer,
+  includeMorphologicalLayer,
+  onCitationLayerChange,
+  onMorphologicalLayerChange,
 }) => {
   return (
     <Box>
@@ -21,6 +36,32 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
         3. Download output files
       </Typography>
       <Divider sx={{ mb: 3 }} />
+
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" component="h3" gutterBottom>
+          Turtle configuration
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeCitationLayer}
+                onChange={(e) => onCitationLayerChange(e.target.checked)}
+              />
+            }
+            label="Include citation layer"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeMorphologicalLayer}
+                onChange={(e) => onMorphologicalLayerChange(e.target.checked)}
+              />
+            }
+            label="Include morphological layer"
+          />
+        </Box>
+      </Box>
 
       <Box sx={{ textAlign: 'center', py: 3 }}>
         <Box
