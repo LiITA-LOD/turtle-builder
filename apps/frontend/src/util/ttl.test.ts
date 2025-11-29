@@ -1,0 +1,647 @@
+import { describe, expect, test } from '@rstest/core';
+import type { ConlluDocument } from 'liita-textlinker-frontend/conllu';
+import {
+  addAllPrefixes,
+  addCitationSentence,
+  addCitationStructureHeader,
+  addDependencyRelation,
+  addDocumentLayer,
+  addDocumentMetadata,
+  addMorphologyAnnotation,
+  addMorphologyAnnotationLayerHeader,
+  addToken,
+  addUDAnnotationLayerHeader,
+  addUDSentence,
+  conlluToTurtle,
+  extractLemmaId,
+  extractMetadata,
+  featuresToUDURLs,
+  generateMorphologyAnnotationURI,
+  generateSentenceURI,
+  generateTokenURI,
+  generateUDDepURI,
+  generateUDLayerSentenceURI,
+  getLemmaPrefix,
+  parseMiscField,
+  toPrefixedURI,
+  type DocumentMetadata,
+} from './ttl';
+import { createDocument, serializeDocument } from './turtle';
+
+describe('TTL Module', () => {
+  describe('parseMiscField', () => {
+    test('should return empty object for undefined input', () => {
+      expect(parseMiscField(undefined)).toEqual({});
+    });
+
+    test('should return empty object for empty array', () => {
+      expect(parseMiscField([])).toEqual({});
+    });
+
+    test('should parse simple key-value pairs', () => {
+      const misc = ['SpaceAfter=No', 'start_char=0'];
+      const result = parseMiscField(misc);
+      expect(result.SpaceAfter).toBe('No');
+      expect(result.start_char).toBe(0);
+    });
+
+    test('should parse LiITALinkedURIs as JSON array', () => {
+      const misc = ['LiITALinkedURIs=["http://example.org/lemma/1"]'];
+      const result = parseMiscField(misc);
+      expect(result.LiITALinkedURIs).toEqual(['http://example.org/lemma/1']);
+    });
+
+    test('should handle invalid JSON in LiITALinkedURIs', () => {
+      const misc = ['LiITALinkedURIs=invalid'];
+      const result = parseMiscField(misc);
+      expect(result.LiITALinkedURIs).toEqual([]);
+    });
+
+    test('should parse numeric fields correctly', () => {
+      const misc = ['start_char=10', 'end_char=20'];
+      const result = parseMiscField(misc);
+      expect(result.start_char).toBe(10);
+      expect(result.end_char).toBe(20);
+    });
+
+    test('should skip items without equals sign', () => {
+      const misc = ['invalid', 'key=value'];
+      const result = parseMiscField(misc);
+      expect(result.key).toBe('value');
+      expect(result.invalid).toBeUndefined();
+    });
+  });
+
+  describe('generateSentenceURI', () => {
+    test('should generate correct sentence URI', () => {
+      const uri = generateSentenceURI('Test Document', 1);
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/CiteStructure/Sentence_1',
+      );
+    });
+
+    test('should encode special characters in doc title', () => {
+      const uri = generateSentenceURI('Test/Doc', 2);
+      expect(uri).toContain('Test%2FDoc');
+    });
+  });
+
+  describe('generateTokenURI', () => {
+    test('should generate correct token URI', () => {
+      const uri = generateTokenURI('Test Document', 1, 1);
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/CiteStructure/Sentence_1/s1t1',
+      );
+    });
+
+    test('should handle multiple sentences and tokens', () => {
+      const uri = generateTokenURI('Doc', 2, 3);
+      expect(uri).toContain('Sentence_2/s2t3');
+    });
+  });
+
+  describe('generateUDDepURI', () => {
+    test('should generate correct UD dependency URI', () => {
+      const uri = generateUDDepURI('Test Document', 1, 1);
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/UD/s1t1',
+      );
+    });
+  });
+
+  describe('generateUDLayerSentenceURI', () => {
+    test('should generate correct UD layer sentence URI', () => {
+      const uri = generateUDLayerSentenceURI('Test Document', 1);
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/UDAnnotationLayer/Sentence_1',
+      );
+    });
+  });
+
+  describe('generateMorphologyAnnotationURI', () => {
+    test('should generate correct morphology annotation URI', () => {
+      const uri = generateMorphologyAnnotationURI('Test Document', 1, 1);
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/UDMorphologyAnnotationLayer/id/s1t1',
+      );
+    });
+  });
+
+  describe('getLemmaPrefix', () => {
+    test('should return liitaIpoLemma for hypolemma URI', () => {
+      const prefix = getLemmaPrefix('http://liita.it/data/id/hypolemma/123');
+      expect(prefix).toBe('liitaIpoLemma');
+    });
+
+    test('should return liitaLemma for regular lemma URI', () => {
+      const prefix = getLemmaPrefix('http://liita.it/data/id/lemma/123');
+      expect(prefix).toBe('liitaLemma');
+    });
+  });
+
+  describe('extractLemmaId', () => {
+    test('should extract lemma ID from URI', () => {
+      const id = extractLemmaId('http://liita.it/data/id/lemma/123');
+      expect(id).toBe('123');
+    });
+
+    test('should extract hypolemma ID from URI', () => {
+      const id = extractLemmaId('http://liita.it/data/id/hypolemma/456');
+      expect(id).toBe('456');
+    });
+
+    test('should return empty string for invalid URI', () => {
+      const id = extractLemmaId('http://example.org/invalid');
+      expect(id).toBe('');
+    });
+  });
+
+  describe('featuresToUDURLs', () => {
+    test('should return empty array for undefined input', () => {
+      expect(featuresToUDURLs(undefined)).toEqual([]);
+    });
+
+    test('should convert features to UD URLs', () => {
+      const feats = { Case: 'Nom', Gender: 'Fem' };
+      const urls = featuresToUDURLs(feats);
+      expect(urls).toHaveLength(2);
+      expect(urls[0]).toBe(
+        'https://universaldependencies.org/it/feat/Case#Nom',
+      );
+      expect(urls[1]).toBe(
+        'https://universaldependencies.org/it/feat/Gender#Fem',
+      );
+    });
+  });
+
+  describe('toPrefixedURI', () => {
+    test('should convert RDF type URI to prefixed form', () => {
+      const result = toPrefixedURI(
+        'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+      );
+      expect(result).toBe('rdf:type');
+    });
+
+    test('should convert RDFS label URI to prefixed form', () => {
+      const result = toPrefixedURI(
+        'http://www.w3.org/2000/01/rdf-schema#label',
+      );
+      expect(result).toBe('rdfs:label');
+    });
+
+    test('should convert POWLA URI to prefixed form', () => {
+      const result = toPrefixedURI('http://purl.org/powla/powla.owl#Document');
+      expect(result).toBe('powla:Document');
+    });
+
+    test('should return original URI if no prefix matches', () => {
+      const uri = 'http://example.org/unknown';
+      expect(toPrefixedURI(uri)).toBe(uri);
+    });
+  });
+
+  describe('addAllPrefixes', () => {
+    test('should add all standard prefixes', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      expect(doc.prefixes.length).toBeGreaterThan(10);
+      expect(doc.prefixes.some((p) => p.prefix === 'rdfs')).toBe(true);
+      expect(doc.prefixes.some((p) => p.prefix === 'powla')).toBe(true);
+      expect(doc.prefixes.some((p) => p.prefix === 'xsd')).toBe(true);
+      expect(doc.prefixes.some((p) => p.prefix === 'dc')).toBe(true);
+      expect(doc.prefixes.some((p) => p.prefix === 'oa')).toBe(true);
+    });
+  });
+
+  describe('addDocumentMetadata', () => {
+    test('should add document metadata triples', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test Document',
+        contributor: 'Test Contributor',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: 'http://example.org/author',
+        seeAlso: 'http://example.org/seealso',
+        description: 'Test description',
+      };
+      const docURI = 'http://example.org/doc';
+      addDocumentMetadata(doc, docURI, metadata.corpusRef, metadata);
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('powla:Document');
+      expect(serialized).toContain('dc:contributor');
+      expect(serialized).toContain('dc:title');
+      expect(serialized).toContain('Test Document');
+    });
+  });
+
+  describe('addDocumentLayer', () => {
+    test('should add document layer and return URI', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const docURI = 'http://example.org/doc';
+      const layerURI = addDocumentLayer(doc, docURI, 'Test Document');
+
+      expect(layerURI).toBe(`${docURI}/DocumentLayer`);
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('powla:DocumentLayer');
+      expect(serialized).toContain('Test Document Document Layer');
+    });
+  });
+
+  describe('addCitationStructureHeader', () => {
+    test('should add citation structure header', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const docURI = 'http://example.org/doc';
+      const sentenceURIs = [
+        'http://example.org/sent1',
+        'http://example.org/sent2',
+      ];
+      const citeURI = addCitationStructureHeader(
+        doc,
+        docURI,
+        'Test Document',
+        sentenceURIs,
+      );
+
+      expect(citeURI).toBe(`${docURI}/CiteStructure`);
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('lila_corpus:CitationStructure');
+      expect(serialized).toContain('lila_corpus:first');
+      expect(serialized).toContain('lila_corpus:last');
+    });
+  });
+
+  describe('addCitationSentence', () => {
+    test('should add citation sentence with all properties', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const sentURI = 'http://example.org/sent1';
+      const tokenURIs = ['http://example.org/token1', 'http://example.org/token2'];
+      addCitationSentence(
+        doc,
+        sentURI,
+        tokenURIs,
+        1,
+        2,
+        undefined,
+        'http://example.org/sent2',
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('lila_corpus:citationUnit');
+      expect(serialized).toContain('lila_corpus:hasCitLevel');
+      expect(serialized).toContain('Sentence_1');
+      expect(serialized).toContain('powla:hasChild');
+    });
+  });
+
+  describe('addToken', () => {
+    test('should add token with basic properties', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const tokenURI = 'http://example.org/token1';
+      const docLayerURI = 'http://example.org/docLayer';
+      addToken(
+        doc,
+        tokenURI,
+        { form: 'test' },
+        docLayerURI,
+        undefined,
+        undefined,
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('powla:Terminal');
+      expect(serialized).toContain('powla:hasStringValue');
+      expect(serialized).toContain('"test"');
+    });
+
+    test('should add token with lemma if present', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const tokenURI = 'http://example.org/token1';
+      const docLayerURI = 'http://example.org/docLayer';
+      addToken(
+        doc,
+        tokenURI,
+        {
+          form: 'test',
+          misc: ['LiITALinkedURIs=["http://liita.it/data/id/lemma/123"]'],
+        },
+        docLayerURI,
+        undefined,
+        undefined,
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('lilaOntology:hasLemma');
+      expect(serialized).toContain('liitaLemma:123');
+    });
+
+    test('should add next and previous token links', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const tokenURI = 'http://example.org/token1';
+      const docLayerURI = 'http://example.org/docLayer';
+      addToken(
+        doc,
+        tokenURI,
+        { form: 'test' },
+        docLayerURI,
+        'http://example.org/token0',
+        'http://example.org/token2',
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('powla:next');
+      expect(serialized).toContain('powla:previous');
+    });
+  });
+
+  describe('addUDAnnotationLayerHeader', () => {
+    test('should add UD annotation layer header', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const docURI = 'http://example.org/doc';
+      const udSentURIs = ['http://example.org/udSent1'];
+      const layerURI = addUDAnnotationLayerHeader(
+        doc,
+        docURI,
+        'Test Document',
+        udSentURIs,
+      );
+
+      expect(layerURI).toBe(`${docURI}/UDAnnotationLayer`);
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('lila_corpus:SyntacticAnnotation');
+    });
+  });
+
+  describe('addUDSentence', () => {
+    test('should add UD sentence with all properties', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const udSentURI = 'http://example.org/udSent1';
+      const tokenURIs = ['http://example.org/token1'];
+      addUDSentence(
+        doc,
+        udSentURI,
+        tokenURIs,
+        1,
+        2,
+        undefined,
+        'http://example.org/udSent2',
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('powla:Root');
+      expect(serialized).toContain('powla:hasTerminal');
+      expect(serialized).toContain('powla:firstTerminal');
+      expect(serialized).toContain('powla:lastTerminal');
+    });
+  });
+
+  describe('addDependencyRelation', () => {
+    test('should add dependency relation with head token', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const depURI = 'http://example.org/dep1';
+      const token = { deprel: 'nsubj', head: '2' };
+      addDependencyRelation(
+        doc,
+        depURI,
+        token,
+        'http://example.org/token1',
+        'http://example.org/token2',
+        'http://example.org/udSent1',
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('UD_tag:nsubj');
+      expect(serialized).toContain('lila_corpus:hasDep');
+      expect(serialized).toContain('lila_corpus:hasHead');
+    });
+
+    test('should add root dependency relation', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const depURI = 'http://example.org/dep1';
+      const token = { deprel: 'root' };
+      addDependencyRelation(
+        doc,
+        depURI,
+        token,
+        'http://example.org/token1',
+        undefined,
+        'http://example.org/udSent1',
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('UD_tag:root');
+    });
+  });
+
+  describe('addMorphologyAnnotationLayerHeader', () => {
+    test('should add morphology annotation layer header', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const docURI = 'http://example.org/doc';
+      const layerURI = addMorphologyAnnotationLayerHeader(
+        doc,
+        docURI,
+        'Test Document',
+      );
+
+      expect(layerURI).toBe(`${docURI}/UDMorphologyAnnotationLayer`);
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('powla:DocumentLayer');
+      expect(serialized).toContain('UD Morphology Annotation Layer');
+    });
+  });
+
+  describe('addMorphologyAnnotation', () => {
+    test('should add morphology annotation with features', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const morphURI = 'http://example.org/morph1';
+      const morphLayerURI = 'http://example.org/morphLayer';
+      const tokenURI = 'http://example.org/token1';
+      addMorphologyAnnotation(
+        doc,
+        morphURI,
+        { form: 'test', feats: { Case: 'Nom' } },
+        morphLayerURI,
+        tokenURI,
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('oa:Annotation');
+      expect(serialized).toContain('oa:hasBody');
+      expect(serialized).toContain('oa:hasTarget');
+    });
+
+    test('should add morphology annotation without features', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const morphURI = 'http://example.org/morph1';
+      const morphLayerURI = 'http://example.org/morphLayer';
+      const tokenURI = 'http://example.org/token1';
+      addMorphologyAnnotation(
+        doc,
+        morphURI,
+        { form: 'test' },
+        morphLayerURI,
+        tokenURI,
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('oa:Annotation');
+      expect(serialized).toContain('https://universaldependencies.org/it/feat/');
+    });
+  });
+
+  describe('extractMetadata', () => {
+    test('should extract metadata from document', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [
+              { type: 'metadata', key: 'docId', value: 'test1' },
+              { type: 'metadata', key: 'docTitle', value: 'Test Doc' },
+              { type: 'metadata', key: 'contributor', value: 'Contributor' },
+              { type: 'metadata', key: 'corpusRef', value: 'http://example.org/corpus' },
+              { type: 'metadata', key: 'docAuthor', value: 'http://example.org/author' },
+              { type: 'metadata', key: 'seeAlso', value: 'http://example.org/seealso' },
+              { type: 'metadata', key: 'description', value: 'Description' },
+            ],
+            tokens: [],
+          },
+        ],
+      };
+
+      const metadata = extractMetadata(document);
+      expect(metadata.docId).toBe('test1');
+      expect(metadata.docTitle).toBe('Test Doc');
+      expect(metadata.contributor).toBe('Contributor');
+      expect(metadata.corpusRef).toBe('http://example.org/corpus');
+      expect(metadata.docAuthor).toBe('http://example.org/author');
+      expect(metadata.seeAlso).toBe('http://example.org/seealso');
+      expect(metadata.description).toBe('Description');
+    });
+
+    test('should return empty strings for missing metadata', () => {
+      const document: ConlluDocument = {
+        sentences: [{ comments: [], tokens: [] }],
+      };
+
+      const metadata = extractMetadata(document);
+      expect(metadata.docId).toBe('');
+      expect(metadata.docTitle).toBe('');
+      expect(metadata.contributor).toBe('');
+    });
+  });
+
+  describe('conlluToTurtle integration', () => {
+    test('should convert simple document to turtle', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [
+              { type: 'metadata', key: 'docTitle', value: 'Test' },
+              { type: 'metadata', key: 'corpusRef', value: 'http://example.org/corpus' },
+            ],
+            tokens: [
+              {
+                id: '1',
+                form: 'Hello',
+                lemma: 'hello',
+                upos: 'INTJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: 'Contributor',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: 'http://example.org/author',
+        seeAlso: 'http://example.org/seealso',
+        description: 'Description',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: true,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      expect(result).toContain('@prefix');
+      expect(result).toContain('powla:Document');
+      expect(result).toContain('Hello');
+    });
+
+    test('should handle document without citation layer', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [],
+            tokens: [
+              {
+                id: '1',
+                form: 'Test',
+                lemma: 'test',
+                upos: 'NOUN',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: false,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      expect(result).toContain('powla:Document');
+      expect(result).not.toContain('CitationStructure');
+    });
+  });
+});
