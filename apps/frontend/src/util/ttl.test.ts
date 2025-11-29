@@ -77,36 +77,62 @@ describe('TTL Module', () => {
   });
 
   describe('generateSentenceURI', () => {
+    const corpusRef = 'http://liita.it/data/corpora/Pirandelita/corpus';
+
     test('should generate correct sentence URI', () => {
-      const uri = generateSentenceURI('Test Document', 1);
+      const uri = generateSentenceURI(corpusRef, 'Test Document', 1);
       expect(uri).toBe(
-        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/CiteStructure/Sentence_1',
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/CiteStructure/s1',
       );
     });
 
     test('should encode special characters in doc title', () => {
-      const uri = generateSentenceURI('Test/Doc', 2);
+      const uri = generateSentenceURI(corpusRef, 'Test/Doc', 2);
       expect(uri).toContain('Test%2FDoc');
+    });
+
+    test('should use custom labels for nested structure when IDs are not provided', () => {
+      const uri = generateSentenceURI(corpusRef, 'Test', 1, undefined, 1, undefined, 1, 'Document', 'Paragraph');
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test/CiteStructure/Document_1/Paragraph_1/s1',
+      );
+    });
+
+    test('should use provided IDs when available', () => {
+      const uri = generateSentenceURI(corpusRef, 'Test', 1, 'doc1', 1, 'para1', 1, 'Document', 'Paragraph');
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test/CiteStructure/doc1/para1/s1',
+      );
     });
   });
 
   describe('generateTokenURI', () => {
     test('should generate correct token URI', () => {
-      const uri = generateTokenURI('Test Document', 1, 1);
+      const sentURI = 'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/CiteStructure/s1';
+      const uri = generateTokenURI(sentURI, 1);
       expect(uri).toBe(
-        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/CiteStructure/Sentence_1/s1t1',
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/CiteStructure/s1/t1',
       );
     });
 
     test('should handle multiple sentences and tokens', () => {
-      const uri = generateTokenURI('Doc', 2, 3);
-      expect(uri).toContain('Sentence_2/s2t3');
+      const sentURI = 'http://liita.it/data/corpora/Pirandelita/corpus/Doc/CiteStructure/s2';
+      const uri = generateTokenURI(sentURI, 3);
+      expect(uri).toBe('http://liita.it/data/corpora/Pirandelita/corpus/Doc/CiteStructure/s2/t3');
+    });
+
+    test('should handle nested sentence URIs (with doc/para)', () => {
+      const sentURI = 'http://liita.it/data/corpora/Pirandelita/corpus/Doc/CiteStructure/Document_1/Paragraph_1/s1';
+      const uri = generateTokenURI(sentURI, 2);
+      expect(uri).toBe('http://liita.it/data/corpora/Pirandelita/corpus/Doc/CiteStructure/Document_1/Paragraph_1/s1/t2');
     });
   });
 
   describe('generateUDDepURI', () => {
+    const corpusRef = 'http://liita.it/data/corpora/Pirandelita/corpus';
+
     test('should generate correct UD dependency URI', () => {
-      const uri = generateUDDepURI('Test Document', 1, 1);
+      const uri = generateUDDepURI(corpusRef, 'Test Document', 1, 1);
       expect(uri).toBe(
         'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/UD/s1t1',
       );
@@ -114,8 +140,10 @@ describe('TTL Module', () => {
   });
 
   describe('generateUDLayerSentenceURI', () => {
+    const corpusRef = 'http://liita.it/data/corpora/Pirandelita/corpus';
+
     test('should generate correct UD layer sentence URI', () => {
-      const uri = generateUDLayerSentenceURI('Test Document', 1);
+      const uri = generateUDLayerSentenceURI(corpusRef, 'Test Document', 1);
       expect(uri).toBe(
         'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/UDAnnotationLayer/Sentence_1',
       );
@@ -123,8 +151,10 @@ describe('TTL Module', () => {
   });
 
   describe('generateMorphologyAnnotationURI', () => {
+    const corpusRef = 'http://liita.it/data/corpora/Pirandelita/corpus';
+
     test('should generate correct morphology annotation URI', () => {
-      const uri = generateMorphologyAnnotationURI('Test Document', 1, 1);
+      const uri = generateMorphologyAnnotationURI(corpusRef, 'Test Document', 1, 1);
       expect(uri).toBe(
         'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document/UDMorphologyAnnotationLayer/id/s1t1',
       );
@@ -205,15 +235,17 @@ describe('TTL Module', () => {
   });
 
   describe('generateDocumentURI', () => {
+    const corpusRef = 'http://liita.it/data/corpora/Pirandelita/corpus';
+
     test('should generate correct document URI', () => {
-      const uri = generateDocumentURI('Test Document');
+      const uri = generateDocumentURI(corpusRef, 'Test Document');
       expect(uri).toBe(
         'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document',
       );
     });
 
     test('should encode special characters', () => {
-      const uri = generateDocumentURI('Test/Doc & More');
+      const uri = generateDocumentURI(corpusRef, 'Test/Doc & More');
       expect(uri).toContain('Test%2FDoc');
       expect(uri).toContain('%20%26%20');
     });
@@ -989,6 +1021,388 @@ describe('TTL Module', () => {
       expect(result).toContain('liitaLemma:123');
       expect(result).toContain('https://universaldependencies.org/it/feat/Case#Nom');
       expect(result).toContain('https://universaldependencies.org/it/feat/Gender#Fem');
+    });
+  });
+
+  describe('newdoc and newpar support', () => {
+    test('should create document and paragraph layers when both newdoc and newpar are present', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [
+              { type: 'freeform', value: '# newdoc id = doc1' },
+              { type: 'freeform', value: '# newpar id = para1' },
+            ],
+            tokens: [
+              {
+                id: '1',
+                form: 'Hello',
+                lemma: 'hello',
+                upos: 'INTJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+          {
+            comments: [],
+            tokens: [
+              {
+                id: '1',
+                form: 'World',
+                lemma: 'world',
+                upos: 'NOUN',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      // Should contain document citation unit
+      expect(result).toContain('lila_corpus:citationUnit');
+      expect(result).toContain('lila_corpus:hasRefType');
+      expect(result).toContain('"Document"');
+      expect(result).toContain('doc1');
+
+      // Should contain paragraph citation unit
+      expect(result).toContain('"Paragraph"');
+      expect(result).toContain('para1');
+
+      // Should contain sentence citation units
+      expect(result).toContain('"Sentence"');
+    });
+
+    test('should create only paragraph layer when only newpar is present', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [{ type: 'freeform', value: '# newpar id = para1' }],
+            tokens: [
+              {
+                id: '1',
+                form: 'Hello',
+                lemma: 'hello',
+                upos: 'INTJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      // Should contain paragraph citation unit
+      expect(result).toContain('"Paragraph"');
+      expect(result).toContain('para1');
+
+      // Should NOT contain document citation unit
+      expect(result).not.toContain('hasRefType "Document"');
+
+      // Should contain sentence citation units
+      expect(result).toContain('"Sentence"');
+    });
+
+    test('should create only document layer when only newdoc is present', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [{ type: 'freeform', value: '# newdoc id = doc1' }],
+            tokens: [
+              {
+                id: '1',
+                form: 'Hello',
+                lemma: 'hello',
+                upos: 'INTJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      // Should contain document citation unit
+      expect(result).toContain('hasRefType "Document"');
+      expect(result).toContain('doc1');
+
+      // Should NOT contain paragraph citation unit
+      expect(result).not.toContain('hasRefType "Paragraph"');
+
+      // Should contain sentence citation units
+      expect(result).toContain('"Sentence"');
+    });
+
+    test('should use current behavior when neither newdoc nor newpar is present', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [],
+            tokens: [
+              {
+                id: '1',
+                form: 'Hello',
+                lemma: 'hello',
+                upos: 'INTJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      // Should NOT contain document citation unit
+      expect(result).not.toContain('hasRefType "Document"');
+
+      // Should NOT contain paragraph citation unit
+      expect(result).not.toContain('hasRefType "Paragraph"');
+
+      // Should contain sentence citation units (current behavior)
+      expect(result).toContain('lila_corpus:citationUnit');
+      expect(result).toContain('hasRefType "Sentence"');
+    });
+
+    test('should use custom labels from citationLayerLabels', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [
+              { type: 'freeform', value: '# newdoc id = doc1' },
+              { type: 'freeform', value: '# newpar id = para1' },
+            ],
+            tokens: [
+              {
+                id: '1',
+                form: 'Hello',
+                lemma: 'hello',
+                upos: 'INTJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Chapter',
+          paragraphLabel: 'Section',
+          sentenceLabel: 'Line',
+        },
+      });
+
+      // Should use custom labels
+      expect(result).toContain('hasRefType "Chapter"');
+      expect(result).toContain('hasRefType "Section"');
+      expect(result).toContain('hasRefType "Line"');
+    });
+
+    test('should handle multiple documents and paragraphs', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [
+              { type: 'freeform', value: '# newdoc id = doc1' },
+              { type: 'freeform', value: '# newpar id = para1' },
+            ],
+            tokens: [
+              {
+                id: '1',
+                form: 'First',
+                lemma: 'first',
+                upos: 'ADJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+          {
+            comments: [{ type: 'freeform', value: '# newpar id = para2' }],
+            tokens: [
+              {
+                id: '1',
+                form: 'Second',
+                lemma: 'second',
+                upos: 'ADJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+          {
+            comments: [{ type: 'freeform', value: '# newdoc id = doc2' }],
+            tokens: [
+              {
+                id: '1',
+                form: 'Third',
+                lemma: 'third',
+                upos: 'ADJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      // Should contain both documents
+      expect(result).toContain('doc1');
+      expect(result).toContain('doc2');
+
+      // Should contain both paragraphs (para1 in doc1, para2 in doc1)
+      expect(result).toContain('para1');
+      expect(result).toContain('para2');
     });
   });
 });

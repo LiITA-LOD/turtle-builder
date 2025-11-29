@@ -118,58 +118,206 @@ export function parseMiscField(misc: string[] | undefined): MISCField {
 }
 
 /**
- * Generate sentence URI
+ * Parse newdoc or newpar comment from any comment type
+ * Returns { type: 'newdoc' | 'newpar', id: string } or null
  */
-export function generateSentenceURI(docTitle: string, sentenceNum: number): IRI {
-  const encodedDoc = encodeURIComponent(docTitle);
-  return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/CiteStructure/Sentence_${sentenceNum}`;
+export function parseNewdocNewpar(
+  comment: { type: string; value?: string; key?: string;[key: string]: any },
+): { type: 'newdoc' | 'newpar'; id: string } | null {
+  // Handle direct newdoc/newpar comment types (if parser supports them)
+  if (comment.type === 'newdoc') {
+    return {
+      type: 'newdoc',
+      id: (comment.value || comment.id || '').trim(),
+    };
+  }
+  if (comment.type === 'newpar') {
+    return {
+      type: 'newpar',
+      id: (comment.value || comment.id || '').trim(),
+    };
+  }
+
+  // Handle freeform comments (value contains the full comment text)
+  if (comment.type === 'freeform' && comment.value) {
+    const value = comment.value.trim();
+
+    // Match: # newdoc id = <id> or # newdoc
+    const newdocMatch = value.match(/^#\s*newdoc(?:\s+id\s*=\s*(.+))?$/i);
+    if (newdocMatch) {
+      return {
+        type: 'newdoc',
+        id: newdocMatch[1]?.trim() || '',
+      };
+    }
+
+    // Match: # newpar id = <id> or # newpar
+    const newparMatch = value.match(/^#\s*newpar(?:\s+id\s*=\s*(.+))?$/i);
+    if (newparMatch) {
+      return {
+        type: 'newpar',
+        id: newparMatch[1]?.trim() || '',
+      };
+    }
+  }
+
+  // Handle metadata comments (key-value format)
+  // Some parsers might structure newdoc/newpar as metadata comments
+  if (comment.type === 'metadata' && comment.key) {
+    if (comment.key === 'newdoc') {
+      return {
+        type: 'newdoc',
+        id: comment.value?.trim() || '',
+      };
+    }
+    if (comment.key === 'newpar') {
+      return {
+        type: 'newpar',
+        id: comment.value?.trim() || '',
+      };
+    }
+  }
+
+  // Fallback: check if comment has any text that matches newdoc/newpar pattern
+  // This handles cases where the parser structure is unknown
+  const textToCheck = comment.value || String(comment);
+  if (typeof textToCheck === 'string') {
+    const trimmed = textToCheck.trim();
+    const newdocMatch = trimmed.match(/newdoc(?:\s+id\s*=\s*(.+))?/i);
+    if (newdocMatch) {
+      return {
+        type: 'newdoc',
+        id: newdocMatch[1]?.trim() || '',
+      };
+    }
+    const newparMatch = trimmed.match(/newpar(?:\s+id\s*=\s*(.+))?/i);
+    if (newparMatch) {
+      return {
+        type: 'newpar',
+        id: newparMatch[1]?.trim() || '',
+      };
+    }
+  }
+
+  return null;
 }
 
 /**
- * Generate token URI
+ * Generate document citation unit URI
  */
-export function generateTokenURI(
+export function generateDocumentCitationURI(
+  corpusRef: string,
   docTitle: string,
-  sentNum: number,
-  tokenId: number,
+  docId: string,
+  docIndex: number,
+  documentLabel: string = 'Document',
 ): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
-  return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/CiteStructure/Sentence_${sentNum}/s${sentNum}t${tokenId}`;
+  const id = docId || `${documentLabel}_${docIndex}`;
+  return `${corpusRef}/${encodedDoc}/CiteStructure/${encodeURIComponent(id)}`;
+}
+
+/**
+ * Generate paragraph citation unit URI (nested under document if provided)
+ */
+export function generateParagraphCitationURI(
+  corpusRef: string,
+  docTitle: string,
+  paraId: string,
+  paraIndex: number,
+  paragraphLabel: string = 'Paragraph',
+  parentDocId?: string,
+  parentDocIndex?: number,
+  parentDocumentLabel: string = 'Document',
+): IRI {
+  const encodedDoc = encodeURIComponent(docTitle);
+  const id = paraId || `${paragraphLabel}_${paraIndex}`;
+  const basePath = parentDocId || parentDocIndex !== undefined
+    ? `CiteStructure/${encodeURIComponent(parentDocId || `${parentDocumentLabel}_${parentDocIndex}`)}`
+    : 'CiteStructure';
+  return `${corpusRef}/${encodedDoc}/${basePath}/${encodeURIComponent(id)}`;
+}
+
+/**
+ * Generate sentence URI (nested under document/paragraph if provided)
+ */
+export function generateSentenceURI(
+  corpusRef: string,
+  docTitle: string,
+  sentenceNum: number,
+  parentDocId?: string,
+  parentDocIndex?: number,
+  parentParaId?: string,
+  parentParaIndex?: number,
+  parentDocumentLabel: string = 'Document',
+  parentParagraphLabel: string = 'Paragraph',
+): IRI {
+  const encodedDoc = encodeURIComponent(docTitle);
+  const pathParts: string[] = ['CiteStructure'];
+
+  if (parentDocId || parentDocIndex !== undefined) {
+    const docId = parentDocId || `${parentDocumentLabel}_${parentDocIndex}`;
+    pathParts.push(encodeURIComponent(docId));
+  }
+
+  if (parentParaId || parentParaIndex !== undefined) {
+    const paraId = parentParaId || `${parentParagraphLabel}_${parentParaIndex}`;
+    pathParts.push(encodeURIComponent(paraId));
+  }
+
+  pathParts.push(`s${sentenceNum}`);
+
+  return `${corpusRef}/${encodedDoc}/${pathParts.join('/')}`;
+}
+
+/**
+ * Generate token URI (nested under sentence URI)
+ */
+export function generateTokenURI(
+  sentURI: IRI,
+  tokenNum: number,
+): IRI {
+  // URI format: .../sN or .../docX/paraY/sN
+  // Token format: tN (separate from sentence)
+  return `${sentURI}/t${tokenNum}`;
 }
 
 /**
  * Generate UD dependency relation URI
  */
 export function generateUDDepURI(
+  corpusRef: string,
   docTitle: string,
   sentNum: number,
   tokenId: number,
 ): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
-  return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/UD/s${sentNum}t${tokenId}`;
+  return `${corpusRef}/${encodedDoc}/UD/s${sentNum}t${tokenId}`;
 }
 
 /**
  * Generate UD annotation layer sentence URI
  */
 export function generateUDLayerSentenceURI(
+  corpusRef: string,
   docTitle: string,
   sentenceNum: number,
 ): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
-  return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/UDAnnotationLayer/Sentence_${sentenceNum}`;
+  return `${corpusRef}/${encodedDoc}/UDAnnotationLayer/Sentence_${sentenceNum}`;
 }
 
 /**
  * Generate UD morphology annotation URI
  */
 export function generateMorphologyAnnotationURI(
+  corpusRef: string,
   docTitle: string,
   sentNum: number,
   tokenId: number,
 ): IRI {
   const encodedDoc = encodeURIComponent(docTitle);
-  return `http://liita.it/data/corpora/Pirandelita/corpus/${encodedDoc}/UDMorphologyAnnotationLayer/id/s${sentNum}t${tokenId}`;
+  return `${corpusRef}/${encodedDoc}/UDMorphologyAnnotationLayer/id/s${sentNum}t${tokenId}`;
 }
 
 /**
@@ -231,9 +379,9 @@ export function toPrefixedURI(uri: string): string {
 /**
  * Generate document URI from document title
  */
-export function generateDocumentURI(docTitle: string): IRI {
+export function generateDocumentURI(corpusRef: string, docTitle: string): IRI {
   const docTitleEncoded = encodeURIComponent(docTitle);
-  return `http://liita.it/data/corpora/Pirandelita/corpus/${docTitleEncoded}`;
+  return `${corpusRef}/${docTitleEncoded}`;
 }
 
 /**
@@ -267,20 +415,26 @@ export function processCitationSentence(
   docLayerURI: IRI,
   prevSentURI: IRI | undefined,
   nextSentURI: IRI | undefined,
+  sentenceLabel: string = REF_TYPE_SENTENCE,
+  sentURI?: IRI, // Optional: if provided, use this instead of generating
 ): void {
-  const sentURI = generateSentenceURI(docTitle, sentNum);
+  // Note: sentURI should always be provided now, but keep fallback for safety
+  // Fallback uses default corpusRef - this should rarely be used
+  const defaultCorpusRef = 'http://liita.it/data/corpora/Pirandelita/corpus';
+  const finalSentURI = sentURI || generateSentenceURI(defaultCorpusRef, docTitle, sentNum);
   const tokenURIs = sentence.tokens.map((_, tIdx) =>
-    generateTokenURI(docTitle, sentNum, tIdx + 1),
+    generateTokenURI(finalSentURI, tIdx + 1),
   );
 
   addCitationSentence(
     doc,
-    sentURI,
+    finalSentURI,
     tokenURIs,
     sentNum,
     totalSentences,
     prevSentURI,
     nextSentURI,
+    sentenceLabel,
   );
 
   processSentenceTokens(doc, sentence, tokenURIs, docLayerURI);
@@ -295,9 +449,14 @@ export function processSentenceTokensOnly(
   docTitle: string,
   sentNum: number,
   docLayerURI: IRI,
+  sentURI?: IRI, // Optional: if provided, use this for token URI generation
 ): void {
+  // Note: sentURI should always be provided now, but keep fallback for safety
+  // Fallback uses default corpusRef - this should rarely be used
+  const defaultCorpusRef = 'http://liita.it/data/corpora/Pirandelita/corpus';
+  const finalSentURI = sentURI || generateSentenceURI(defaultCorpusRef, docTitle, sentNum);
   const tokenURIs = sentence.tokens.map((_, tIdx) =>
-    generateTokenURI(docTitle, sentNum, tIdx + 1),
+    generateTokenURI(finalSentURI, tIdx + 1),
   );
 
   processSentenceTokens(doc, sentence, tokenURIs, docLayerURI);
@@ -449,6 +608,122 @@ export function addCitationStructureHeader(
 }
 
 /**
+ * Add a document citation unit to the document
+ */
+export function addCitationDocument(
+  doc: ReturnType<typeof createDocument>,
+  docURI: IRI,
+  docId: string,
+  docIndex: number,
+  childURIs: IRI[],
+  label: string,
+  prevDocURI: IRI | undefined,
+  nextDocURI: IRI | undefined,
+): void {
+  if (childURIs.length === 0) {
+    throw new Error('childURIs must not be empty');
+  }
+
+  addType(doc, docURI, toPrefixedURI(LILA_CORPUS_CITATION_UNIT));
+  addProperty(doc, docURI, toPrefixedURI(LILA_CORPUS_FIRST), childURIs[0]);
+  addIntegerProperty(
+    doc,
+    docURI,
+    toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL),
+    1,
+  );
+  addStringProperty(
+    doc,
+    docURI,
+    toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
+    label,
+  );
+  const refValue = docId || `${label}_${docIndex}`;
+  addStringProperty(
+    doc,
+    docURI,
+    toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE),
+    refValue,
+  );
+  addProperty(
+    doc,
+    docURI,
+    toPrefixedURI(LILA_CORPUS_LAST),
+    childURIs[childURIs.length - 1],
+  );
+  // Add multiple hasChild relationships
+  for (const childURI of childURIs) {
+    addProperty(doc, docURI, toPrefixedURI(POWLA_HAS_CHILD), childURI);
+  }
+  if (nextDocURI) {
+    addProperty(doc, docURI, toPrefixedURI(POWLA_NEXT), nextDocURI);
+  }
+  if (prevDocURI) {
+    addProperty(doc, docURI, toPrefixedURI(POWLA_PREVIOUS), prevDocURI);
+  }
+  const displayName = docId || `${label} ${docIndex}`;
+  addLabel(doc, docURI, displayName);
+}
+
+/**
+ * Add a paragraph citation unit to the document
+ */
+export function addCitationParagraph(
+  doc: ReturnType<typeof createDocument>,
+  paraURI: IRI,
+  paraId: string,
+  paraIndex: number,
+  childURIs: IRI[],
+  label: string,
+  prevParaURI: IRI | undefined,
+  nextParaURI: IRI | undefined,
+): void {
+  if (childURIs.length === 0) {
+    throw new Error('childURIs must not be empty');
+  }
+
+  addType(doc, paraURI, toPrefixedURI(LILA_CORPUS_CITATION_UNIT));
+  addProperty(doc, paraURI, toPrefixedURI(LILA_CORPUS_FIRST), childURIs[0]);
+  addIntegerProperty(
+    doc,
+    paraURI,
+    toPrefixedURI(LILA_CORPUS_HAS_CIT_LEVEL),
+    1,
+  );
+  addStringProperty(
+    doc,
+    paraURI,
+    toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
+    label,
+  );
+  const refValue = paraId || `${label}_${paraIndex}`;
+  addStringProperty(
+    doc,
+    paraURI,
+    toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE),
+    refValue,
+  );
+  addProperty(
+    doc,
+    paraURI,
+    toPrefixedURI(LILA_CORPUS_LAST),
+    childURIs[childURIs.length - 1],
+  );
+  // Add multiple hasChild relationships
+  for (const childURI of childURIs) {
+    addProperty(doc, paraURI, toPrefixedURI(POWLA_HAS_CHILD), childURI);
+  }
+  if (nextParaURI) {
+    addProperty(doc, paraURI, toPrefixedURI(POWLA_NEXT), nextParaURI);
+  }
+  if (prevParaURI) {
+    addProperty(doc, paraURI, toPrefixedURI(POWLA_PREVIOUS), prevParaURI);
+  }
+  const displayName = paraId || `${label} ${paraIndex}`;
+  addLabel(doc, paraURI, displayName);
+}
+
+/**
  * Add a citation sentence to the document
  */
 export function addCitationSentence(
@@ -459,6 +734,7 @@ export function addCitationSentence(
   totalSentences: number,
   prevSentURI: IRI | undefined,
   nextSentURI: IRI | undefined,
+  sentenceLabel: string = REF_TYPE_SENTENCE,
 ): void {
   if (tokenURIs.length === 0) {
     throw new Error('tokenURIs must not be empty');
@@ -476,13 +752,13 @@ export function addCitationSentence(
     doc,
     sentURI,
     toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
-    REF_TYPE_SENTENCE,
+    sentenceLabel,
   );
   addStringProperty(
     doc,
     sentURI,
     toPrefixedURI(LILA_CORPUS_HAS_REF_VALUE),
-    `Sentence_${sentNum}`,
+    `${sentenceLabel}_${sentNum}`,
   );
   addProperty(
     doc,
@@ -500,7 +776,7 @@ export function addCitationSentence(
   if (prevSentURI) {
     addProperty(doc, sentURI, toPrefixedURI(POWLA_PREVIOUS), prevSentURI);
   }
-  addLabel(doc, sentURI, `Sentence ${sentNum}`);
+  addLabel(doc, sentURI, `${sentenceLabel} ${sentNum}`);
 }
 
 /**
@@ -776,8 +1052,8 @@ export function conlluToTurtle(
   addAllPrefixes(doc);
 
   // Build document URI
-  const docURI = generateDocumentURI(metadata.docTitle);
   const corpusRefURI = metadata.corpusRef;
+  const docURI = generateDocumentURI(corpusRefURI, metadata.docTitle);
 
   // Document metadata
   addDocumentMetadata(doc, docURI, corpusRefURI, metadata);
@@ -785,36 +1061,603 @@ export function conlluToTurtle(
   // Document layer
   const docLayerURI = addDocumentLayer(doc, docURI, metadata.docTitle);
 
+  // Map to track citation sentence URIs for token generation (used by both citation and UD layers)
+  const citationSentURIMap = new Map<number, IRI>();
+
+  // Extract citation layer labels (used throughout, even when citation layer is disabled)
+  const {
+    documentLabel = 'Document',
+    paragraphLabel = 'Paragraph',
+    sentenceLabel = 'Sentence',
+  } = options?.citationLayerLabels || {};
+
   // Citation structure header
   if (includeCitationLayer) {
-    const sentenceURIs = validSentences.map((_, i) =>
-      generateSentenceURI(metadata.docTitle, i + 1),
+
+    // Parse newdoc/newpar from comments and group sentences
+    interface SentenceGroup {
+      sentence: (typeof validSentences)[0];
+      index: number;
+      newdoc?: { id: string };
+      newpar?: { id: string };
+    }
+
+    const sentenceGroups: SentenceGroup[] = validSentences.map(
+      (sentence, idx) => {
+        const group: SentenceGroup = { sentence, index: idx };
+        for (const comment of sentence.comments) {
+          // Try to parse newdoc/newpar from the comment
+          const parsed = parseNewdocNewpar(comment);
+          if (parsed) {
+            if (parsed.type === 'newdoc') {
+              group.newdoc = { id: parsed.id };
+            } else if (parsed.type === 'newpar') {
+              group.newpar = { id: parsed.id };
+            }
+          } else {
+            // Fallback: check if comment object itself contains newdoc/newpar info
+            // Some parsers might structure it differently
+            const commentStr = JSON.stringify(comment);
+            if (commentStr.includes('newdoc')) {
+              const idMatch = commentStr.match(/newdoc[^"]*id[^"]*[:=]\s*["']?([^"',}\s]+)/i);
+              group.newdoc = { id: idMatch ? idMatch[1] : '' };
+            }
+            if (commentStr.includes('newpar')) {
+              const idMatch = commentStr.match(/newpar[^"]*id[^"]*[:=]\s*["']?([^"',}\s]+)/i);
+              group.newpar = { id: idMatch ? idMatch[1] : '' };
+            }
+          }
+        }
+        return group;
+      },
     );
-    addCitationStructureHeader(doc, docURI, metadata.docTitle, sentenceURIs);
 
-    // Process sentences
-    for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
-      const sentence = validSentences[sIdx];
-      const sentNum = sIdx + 1;
-      const nextSentURI =
-        sIdx < validSentences.length - 1
-          ? generateSentenceURI(metadata.docTitle, sentNum + 1)
-          : undefined;
-      const prevSentURI =
-        sIdx > 0
-          ? generateSentenceURI(metadata.docTitle, sentNum - 1)
-          : undefined;
+    // Check if we have newdoc or newpar
+    const hasNewdoc = sentenceGroups.some((g) => g.newdoc);
+    const hasNewpar = sentenceGroups.some((g) => g.newpar);
 
-      processCitationSentence(
-        doc,
-        sentence,
+    // Group sentences into documents and paragraphs
+    interface DocumentGroup {
+      docId: string;
+      docIndex: number;
+      paragraphs: ParagraphGroup[];
+    }
+
+    interface ParagraphGroup {
+      paraId: string;
+      paraIndex: number;
+      sentences: SentenceGroup[];
+    }
+
+    const documents: DocumentGroup[] = [];
+    let currentDoc: DocumentGroup | null = null;
+    let currentPara: ParagraphGroup | null = null;
+    let docCounter = 0;
+    let paraCounter = 0;
+
+    for (const group of sentenceGroups) {
+      // Check for new document
+      if (hasNewdoc && group.newdoc) {
+        docCounter++;
+        paraCounter = 0; // Reset paragraph counter for new document
+        currentDoc = {
+          docId: group.newdoc.id,
+          docIndex: docCounter,
+          paragraphs: [],
+        };
+        documents.push(currentDoc);
+        currentPara = null;
+      } else if (!currentDoc && hasNewdoc) {
+        // First sentence without newdoc - create implicit document
+        docCounter++;
+        currentDoc = {
+          docId: '',
+          docIndex: docCounter,
+          paragraphs: [],
+        };
+        documents.push(currentDoc);
+      } else if (!hasNewdoc && documents.length === 0) {
+        // No newdoc at all - don't create document layer
+        currentDoc = null;
+      }
+
+      // Check for new paragraph (only if newpar is present)
+      if (hasNewpar && group.newpar) {
+        paraCounter++;
+        if (!currentDoc && hasNewdoc) {
+          // Paragraph without document - shouldn't happen, but handle gracefully
+          docCounter++;
+          currentDoc = {
+            docId: '',
+            docIndex: docCounter,
+            paragraphs: [],
+          };
+          documents.push(currentDoc);
+        }
+        if (currentDoc) {
+          currentPara = {
+            paraId: group.newpar.id,
+            paraIndex: paraCounter,
+            sentences: [],
+          };
+          currentDoc.paragraphs.push(currentPara);
+        } else if (!hasNewdoc) {
+          // Paragraph without document layer
+          if (!currentPara) {
+            paraCounter = 1;
+            currentPara = {
+              paraId: group.newpar.id,
+              paraIndex: paraCounter,
+              sentences: [],
+            };
+          }
+        }
+      } else if (hasNewpar && !currentPara) {
+        // First sentence without newpar - create implicit paragraph
+        paraCounter++;
+        if (currentDoc) {
+          currentPara = {
+            paraId: '',
+            paraIndex: paraCounter,
+            sentences: [],
+          };
+          currentDoc.paragraphs.push(currentPara);
+        } else if (!hasNewdoc) {
+          currentPara = {
+            paraId: '',
+            paraIndex: paraCounter,
+            sentences: [],
+          };
+        }
+      }
+
+      // Add sentence to current paragraph or directly to document
+      if (hasNewpar && currentPara) {
+        // Has newpar - add to paragraph
+        currentPara.sentences.push(group);
+      } else if (currentDoc && !hasNewpar) {
+        // Has document but no newpar - add directly to document (no paragraph layer)
+        // We'll handle this specially in the processing loop - don't create paragraphs
+        // For now, just track sentences directly in a special way
+        if (currentDoc.paragraphs.length === 0) {
+          // Mark that this document has direct sentences (not paragraphs)
+          // We'll use a special structure where paragraphs array is empty
+          // and we'll process sentences directly
+        }
+        // Store sentences in a way that indicates they're direct children
+        // We'll use a special paragraph with paraIndex = -1 to indicate "direct sentences"
+        let directSentencesPara = currentDoc.paragraphs.find((p) => p.paraIndex === -1);
+        if (!directSentencesPara) {
+          directSentencesPara = {
+            paraId: '',
+            paraIndex: -1, // Special marker for "direct sentences, no paragraph"
+            sentences: [],
+          };
+          currentDoc.paragraphs.push(directSentencesPara);
+        }
+        directSentencesPara.sentences.push(group);
+      } else if (!currentDoc && !hasNewdoc && !hasNewpar) {
+        // No newdoc, no newpar - will be handled in else branch
+      }
+    }
+
+    // Map to track citation sentence URIs for token generation
+    const citationSentURIMap = new Map<number, IRI>();
+
+    // Helper function to generate sentence URI with parent context
+    const getSentenceURI = (
+      sentNum: number,
+      parentDocId?: string,
+      parentDocIndex?: number,
+      parentParaId?: string,
+      parentParaIndex?: number,
+    ): IRI => {
+      const uri = generateSentenceURI(
+        corpusRefURI,
         metadata.docTitle,
         sentNum,
-        validSentences.length,
-        docLayerURI,
-        prevSentURI,
-        nextSentURI,
+        parentDocId,
+        parentDocIndex,
+        parentParaId,
+        parentParaIndex,
+        documentLabel,
+        paragraphLabel,
       );
+      // Track the URI for this sentence index
+      citationSentURIMap.set(sentNum - 1, uri);
+      return uri;
+    };
+
+    // Determine top-level items for citation structure
+    const topLevelURIs: IRI[] = [];
+    if (hasNewdoc) {
+      // Top level is documents
+      for (const doc of documents) {
+        const docURI = generateDocumentCitationURI(
+          corpusRefURI,
+          metadata.docTitle,
+          doc.docId,
+          doc.docIndex,
+          documentLabel,
+        );
+        topLevelURIs.push(docURI);
+      }
+    } else if (hasNewpar) {
+      // Top level is paragraphs (if no documents)
+      // Collect all paragraphs
+      const allParagraphs: ParagraphGroup[] = [];
+      let paraIdx = 0;
+      for (const group of sentenceGroups) {
+        if (group.newpar) {
+          paraIdx++;
+          allParagraphs.push({
+            paraId: group.newpar.id,
+            paraIndex: paraIdx,
+            sentences: [group],
+          });
+        } else if (allParagraphs.length > 0) {
+          allParagraphs[allParagraphs.length - 1].sentences.push(group);
+        } else {
+          // First sentence without newpar
+          paraIdx++;
+          allParagraphs.push({
+            paraId: '',
+            paraIndex: paraIdx,
+            sentences: [group],
+          });
+        }
+      }
+      for (const para of allParagraphs) {
+        const paraURI = generateParagraphCitationURI(
+          corpusRefURI,
+          metadata.docTitle,
+          para.paraId,
+          para.paraIndex,
+          paragraphLabel,
+        );
+        topLevelURIs.push(paraURI);
+      }
+    } else {
+      // No newdoc or newpar - use current behavior (sentences directly)
+      for (let i = 0; i < validSentences.length; i++) {
+        topLevelURIs.push(getSentenceURI(i + 1));
+      }
+    }
+
+    if (topLevelURIs.length > 0) {
+      addCitationStructureHeader(doc, docURI, metadata.docTitle, topLevelURIs);
+    }
+
+    // Process hierarchical structure
+    if (hasNewdoc) {
+      // Process documents -> paragraphs -> sentences
+      for (let dIdx = 0; dIdx < documents.length; dIdx++) {
+        const docGroup = documents[dIdx];
+        const docURI = generateDocumentCitationURI(
+          corpusRefURI,
+          metadata.docTitle,
+          docGroup.docId,
+          docGroup.docIndex,
+          documentLabel,
+        );
+
+        // Collect child URIs (paragraphs or sentences)
+        const childURIs: IRI[] = [];
+        const hasDirectSentences =
+          docGroup.paragraphs.length > 0 &&
+          docGroup.paragraphs[0].paraIndex === -1;
+
+        if (hasDirectSentences) {
+          // Document has direct sentences (no paragraph layer)
+          const sentURIs = docGroup.paragraphs[0].sentences.map(
+            (sg) => getSentenceURI(sg.index + 1, docGroup.docId, docGroup.docIndex),
+          );
+          childURIs.push(...sentURIs);
+        } else {
+          // Document has paragraphs
+          for (const para of docGroup.paragraphs) {
+            if (para.paraIndex !== -1) {
+              const paraURI = generateParagraphCitationURI(
+                corpusRefURI,
+                metadata.docTitle,
+                para.paraId,
+                para.paraIndex,
+                paragraphLabel,
+                docGroup.docId,
+                docGroup.docIndex,
+                documentLabel,
+              );
+              childURIs.push(paraURI);
+            }
+          }
+        }
+
+        const nextDocURI =
+          dIdx < documents.length - 1
+            ? generateDocumentCitationURI(
+              corpusRefURI,
+              metadata.docTitle,
+              documents[dIdx + 1].docId,
+              documents[dIdx + 1].docIndex,
+              documentLabel,
+            )
+            : undefined;
+        const prevDocURI =
+          dIdx > 0
+            ? generateDocumentCitationURI(
+              corpusRefURI,
+              metadata.docTitle,
+              documents[dIdx - 1].docId,
+              documents[dIdx - 1].docIndex,
+              documentLabel,
+            )
+            : undefined;
+
+        addCitationDocument(
+          doc,
+          docURI,
+          docGroup.docId,
+          docGroup.docIndex,
+          childURIs.length > 0
+            ? childURIs
+            : [getSentenceURI(1, docGroup.docId, docGroup.docIndex)], // Fallback to first sentence if empty
+          documentLabel,
+          prevDocURI,
+          nextDocURI,
+        );
+
+        // Process paragraphs in this document (or direct sentences if paraIndex === -1)
+        for (let pIdx = 0; pIdx < docGroup.paragraphs.length; pIdx++) {
+          const para = docGroup.paragraphs[pIdx];
+
+          // Check if this is a "direct sentences" marker (paraIndex === -1)
+          if (para.paraIndex === -1) {
+            // Direct sentences - no paragraph layer, add sentences directly to document
+            const sentURIs = para.sentences.map(
+              (sg) => getSentenceURI(sg.index + 1, docGroup.docId, docGroup.docIndex),
+            );
+
+            // Process sentences directly (no paragraph citation unit)
+            for (let sIdx = 0; sIdx < para.sentences.length; sIdx++) {
+              const sg = para.sentences[sIdx];
+              const sentNum = sg.index + 1;
+              const sentURI = getSentenceURI(sentNum, docGroup.docId, docGroup.docIndex);
+              citationSentURIMap.set(sg.index, sentURI);
+              const nextSentURI =
+                sIdx < para.sentences.length - 1
+                  ? getSentenceURI(para.sentences[sIdx + 1].index + 1, docGroup.docId, docGroup.docIndex)
+                  : undefined;
+              const prevSentURI =
+                sIdx > 0
+                  ? getSentenceURI(para.sentences[sIdx - 1].index + 1, docGroup.docId, docGroup.docIndex)
+                  : undefined;
+
+              processCitationSentence(
+                doc,
+                sg.sentence,
+                metadata.docTitle,
+                sentNum,
+                validSentences.length,
+                docLayerURI,
+                prevSentURI,
+                nextSentURI,
+                sentenceLabel,
+                sentURI,
+              );
+            }
+          } else {
+            // Normal paragraph - create paragraph citation unit
+            const paraURI = generateParagraphCitationURI(
+              corpusRefURI,
+              metadata.docTitle,
+              para.paraId,
+              para.paraIndex,
+              paragraphLabel,
+              docGroup.docId,
+              docGroup.docIndex,
+              documentLabel,
+            );
+
+            const sentURIs = para.sentences.map(
+              (sg) => getSentenceURI(sg.index + 1, docGroup.docId, docGroup.docIndex, para.paraId, para.paraIndex),
+            );
+
+            const nextParaURI =
+              pIdx < docGroup.paragraphs.length - 1 &&
+                docGroup.paragraphs[pIdx + 1].paraIndex !== -1
+                ? generateParagraphCitationURI(
+                  corpusRefURI,
+                  metadata.docTitle,
+                  docGroup.paragraphs[pIdx + 1].paraId,
+                  docGroup.paragraphs[pIdx + 1].paraIndex,
+                  paragraphLabel,
+                  docGroup.docId,
+                  docGroup.docIndex,
+                  documentLabel,
+                )
+                : undefined;
+            const prevParaURI =
+              pIdx > 0 && docGroup.paragraphs[pIdx - 1].paraIndex !== -1
+                ? generateParagraphCitationURI(
+                  corpusRefURI,
+                  metadata.docTitle,
+                  docGroup.paragraphs[pIdx - 1].paraId,
+                  docGroup.paragraphs[pIdx - 1].paraIndex,
+                  paragraphLabel,
+                  docGroup.docId,
+                  docGroup.docIndex,
+                  documentLabel,
+                )
+                : undefined;
+
+            addCitationParagraph(
+              doc,
+              paraURI,
+              para.paraId,
+              para.paraIndex,
+              sentURIs,
+              paragraphLabel,
+              prevParaURI,
+              nextParaURI,
+            );
+
+            // Process sentences in this paragraph
+            for (let sIdx = 0; sIdx < para.sentences.length; sIdx++) {
+              const sg = para.sentences[sIdx];
+              const sentNum = sg.index + 1;
+              const sentURI = getSentenceURI(sentNum, docGroup.docId, docGroup.docIndex, para.paraId, para.paraIndex);
+              citationSentURIMap.set(sg.index, sentURI);
+              const nextSentURI =
+                sIdx < para.sentences.length - 1
+                  ? getSentenceURI(para.sentences[sIdx + 1].index + 1, docGroup.docId, docGroup.docIndex, para.paraId, para.paraIndex)
+                  : undefined;
+              const prevSentURI =
+                sIdx > 0
+                  ? getSentenceURI(para.sentences[sIdx - 1].index + 1, docGroup.docId, docGroup.docIndex, para.paraId, para.paraIndex)
+                  : undefined;
+
+              processCitationSentence(
+                doc,
+                sg.sentence,
+                metadata.docTitle,
+                sentNum,
+                validSentences.length,
+                docLayerURI,
+                prevSentURI,
+                nextSentURI,
+                sentenceLabel,
+                sentURI,
+              );
+            }
+          }
+        }
+
+      }
+    } else if (hasNewpar) {
+      // Process paragraphs -> sentences (no document layer)
+      const allParagraphs: ParagraphGroup[] = [];
+      let paraIdx = 0;
+      for (const group of sentenceGroups) {
+        if (group.newpar) {
+          paraIdx++;
+          allParagraphs.push({
+            paraId: group.newpar.id,
+            paraIndex: paraIdx,
+            sentences: [group],
+          });
+        } else if (allParagraphs.length > 0) {
+          allParagraphs[allParagraphs.length - 1].sentences.push(group);
+        } else {
+          // First sentence without newpar
+          paraIdx++;
+          allParagraphs.push({
+            paraId: '',
+            paraIndex: paraIdx,
+            sentences: [group],
+          });
+        }
+      }
+
+      for (let pIdx = 0; pIdx < allParagraphs.length; pIdx++) {
+        const para = allParagraphs[pIdx];
+        const paraURI = generateParagraphCitationURI(
+          corpusRefURI,
+          metadata.docTitle,
+          para.paraId,
+          para.paraIndex,
+          paragraphLabel,
+        );
+
+        const sentURIs = para.sentences.map((sg) => getSentenceURI(sg.index + 1, undefined, undefined, para.paraId, para.paraIndex));
+
+        const nextParaURI =
+          pIdx < allParagraphs.length - 1
+            ? generateParagraphCitationURI(
+              corpusRefURI,
+              metadata.docTitle,
+              allParagraphs[pIdx + 1].paraId,
+              allParagraphs[pIdx + 1].paraIndex,
+              paragraphLabel,
+            )
+            : undefined;
+        const prevParaURI =
+          pIdx > 0
+            ? generateParagraphCitationURI(
+              corpusRefURI,
+              metadata.docTitle,
+              allParagraphs[pIdx - 1].paraId,
+              allParagraphs[pIdx - 1].paraIndex,
+              paragraphLabel,
+            )
+            : undefined;
+
+        addCitationParagraph(
+          doc,
+          paraURI,
+          para.paraId,
+          para.paraIndex,
+          sentURIs,
+          paragraphLabel,
+          prevParaURI,
+          nextParaURI,
+        );
+
+        // Process sentences in this paragraph
+        for (let sIdx = 0; sIdx < para.sentences.length; sIdx++) {
+          const sg = para.sentences[sIdx];
+          const sentNum = sg.index + 1;
+          const sentURI = getSentenceURI(sentNum, undefined, undefined, para.paraId, para.paraIndex);
+          const nextSentURI =
+            sIdx < para.sentences.length - 1
+              ? getSentenceURI(para.sentences[sIdx + 1].index + 1, undefined, undefined, para.paraId, para.paraIndex)
+              : undefined;
+          const prevSentURI =
+            sIdx > 0
+              ? getSentenceURI(para.sentences[sIdx - 1].index + 1, undefined, undefined, para.paraId, para.paraIndex)
+              : undefined;
+
+          processCitationSentence(
+            doc,
+            sg.sentence,
+            metadata.docTitle,
+            sentNum,
+            validSentences.length,
+            docLayerURI,
+            prevSentURI,
+            nextSentURI,
+            sentenceLabel,
+          );
+        }
+      }
+    } else {
+      // No newdoc or newpar - use current behavior (sentences directly)
+      for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
+        const sentence = validSentences[sIdx];
+        const sentNum = sIdx + 1;
+        const sentURI = getSentenceURI(sentNum);
+        citationSentURIMap.set(sIdx, sentURI);
+        const nextSentURI =
+          sIdx < validSentences.length - 1
+            ? getSentenceURI(sentNum + 1)
+            : undefined;
+        const prevSentURI =
+          sIdx > 0
+            ? getSentenceURI(sentNum - 1)
+            : undefined;
+
+        processCitationSentence(
+          doc,
+          sentence,
+          metadata.docTitle,
+          sentNum,
+          validSentences.length,
+          docLayerURI,
+          prevSentURI,
+          nextSentURI,
+          sentenceLabel,
+          sentURI,
+        );
+      }
     }
   } else {
     // Even if citation layer is disabled, we still need to create tokens
@@ -822,19 +1665,22 @@ export function conlluToTurtle(
     for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
       const sentence = validSentences[sIdx];
       const sentNum = sIdx + 1;
+      const sentURI = generateSentenceURI(corpusRefURI, metadata.docTitle, sentNum, undefined, undefined, undefined, undefined, documentLabel, paragraphLabel);
+      citationSentURIMap.set(sIdx, sentURI);
       processSentenceTokensOnly(
         doc,
         sentence,
         metadata.docTitle,
         sentNum,
         docLayerURI,
+        sentURI,
       );
     }
   }
 
   // UD Annotation Layer
   const udSentURIs = validSentences.map((_, i) =>
-    generateUDLayerSentenceURI(metadata.docTitle, i + 1),
+    generateUDLayerSentenceURI(corpusRefURI, metadata.docTitle, i + 1),
   );
   const udLayerURI = addUDAnnotationLayerHeader(
     doc,
@@ -843,13 +1689,21 @@ export function conlluToTurtle(
     udSentURIs,
   );
 
+  // If citation layer wasn't processed, generate default sentence URIs for token generation
+  if (citationSentURIMap.size === 0) {
+    for (let i = 0; i < validSentences.length; i++) {
+      citationSentURIMap.set(i, generateSentenceURI(corpusRefURI, metadata.docTitle, i + 1, undefined, undefined, undefined, undefined, documentLabel, paragraphLabel));
+    }
+  }
+
   // UD sentences and dependency relations
   for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
     const sentence = validSentences[sIdx];
     const sentNum = sIdx + 1;
     const udSentURI = udSentURIs[sIdx];
+    const citationSentURI = citationSentURIMap.get(sIdx) || generateSentenceURI(corpusRefURI, metadata.docTitle, sentNum, undefined, undefined, undefined, undefined, documentLabel, paragraphLabel);
     const tokenURIs = sentence.tokens.map((_, tIdx) =>
-      generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
+      generateTokenURI(citationSentURI, tIdx + 1),
     );
 
     // UD sentence root
@@ -870,7 +1724,7 @@ export function conlluToTurtle(
     if (includeMorphologicalLayer) {
       for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
         const token = sentence.tokens[tIdx];
-        const depURI = generateUDDepURI(metadata.docTitle, sentNum, tIdx + 1);
+        const depURI = generateUDDepURI(corpusRefURI, metadata.docTitle, sentNum, tIdx + 1);
 
         // Find head
         const headIndex =
@@ -881,8 +1735,8 @@ export function conlluToTurtle(
         const depTokenURI = tokenURIs[tIdx];
         const headTokenURI =
           headIndex !== undefined &&
-          headIndex >= 0 &&
-          headIndex < tokenURIs.length
+            headIndex >= 0 &&
+            headIndex < tokenURIs.length
             ? tokenURIs[headIndex]
             : undefined;
 
@@ -914,11 +1768,13 @@ export function conlluToTurtle(
       for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
         const token = sentence.tokens[tIdx];
         const morphURI = generateMorphologyAnnotationURI(
+          corpusRefURI,
           metadata.docTitle,
           sentNum,
           tIdx + 1,
         );
-        const tokenURI = generateTokenURI(metadata.docTitle, sentNum, tIdx + 1);
+        const citationSentURI = citationSentURIMap.get(sIdx) || generateSentenceURI(corpusRefURI, metadata.docTitle, sentNum, undefined, undefined, undefined, undefined, documentLabel, paragraphLabel);
+        const tokenURI = generateTokenURI(citationSentURI, tIdx + 1);
 
         addMorphologyAnnotation(
           doc,
