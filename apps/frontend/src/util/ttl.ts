@@ -222,6 +222,81 @@ export function toPrefixedURI(uri: string): string {
 }
 
 /**
+ * Generate document URI from document title
+ */
+export function generateDocumentURI(docTitle: string): IRI {
+  const docTitleEncoded = encodeURIComponent(docTitle);
+  return `http://liita.it/data/corpora/Pirandelita/corpus/${docTitleEncoded}`;
+}
+
+/**
+ * Process tokens in a sentence and add them to the document
+ */
+export function processSentenceTokens(
+  doc: ReturnType<typeof createDocument>,
+  sentence: { tokens: Array<{ form: string; misc?: string[] }> },
+  tokenURIs: IRI[],
+  docLayerURI: IRI,
+): void {
+  for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
+    const token = sentence.tokens[tIdx];
+    const tokenURI = tokenURIs[tIdx];
+    const nextTokenURI =
+      tIdx < sentence.tokens.length - 1 ? tokenURIs[tIdx + 1] : undefined;
+    const prevTokenURI = tIdx > 0 ? tokenURIs[tIdx - 1] : undefined;
+    addToken(doc, tokenURI, token, docLayerURI, prevTokenURI, nextTokenURI);
+  }
+}
+
+/**
+ * Process a sentence in citation layer
+ */
+export function processCitationSentence(
+  doc: ReturnType<typeof createDocument>,
+  sentence: { tokens: Array<{ form: string; misc?: string[] }> },
+  docTitle: string,
+  sentNum: number,
+  totalSentences: number,
+  docLayerURI: IRI,
+  prevSentURI: IRI | undefined,
+  nextSentURI: IRI | undefined,
+): void {
+  const sentURI = generateSentenceURI(docTitle, sentNum);
+  const tokenURIs = sentence.tokens.map((_, tIdx) =>
+    generateTokenURI(docTitle, sentNum, tIdx + 1),
+  );
+
+  addCitationSentence(
+    doc,
+    sentURI,
+    tokenURIs,
+    sentNum,
+    totalSentences,
+    prevSentURI,
+    nextSentURI,
+  );
+
+  processSentenceTokens(doc, sentence, tokenURIs, docLayerURI);
+}
+
+/**
+ * Process a sentence without citation layer (tokens only)
+ */
+export function processSentenceTokensOnly(
+  doc: ReturnType<typeof createDocument>,
+  sentence: { tokens: Array<{ form: string; misc?: string[] }> },
+  docTitle: string,
+  sentNum: number,
+  docLayerURI: IRI,
+): void {
+  const tokenURIs = sentence.tokens.map((_, tIdx) =>
+    generateTokenURI(docTitle, sentNum, tIdx + 1),
+  );
+
+  processSentenceTokens(doc, sentence, tokenURIs, docLayerURI);
+}
+
+/**
  * Options for controlling which layers to include in the output
  */
 export interface ConlluToTurtleOptions {
@@ -678,8 +753,7 @@ export function conlluToTurtle(
   addAllPrefixes(doc);
 
   // Build document URI
-  const docTitleEncoded = encodeURIComponent(metadata.docTitle);
-  const docURI = `http://liita.it/data/corpora/Pirandelita/corpus/${docTitleEncoded}`;
+  const docURI = generateDocumentURI(metadata.docTitle);
   const corpusRefURI = metadata.corpusRef;
 
   // Document metadata
@@ -699,13 +773,6 @@ export function conlluToTurtle(
     for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
       const sentence = validSentences[sIdx];
       const sentNum = sIdx + 1;
-      const sentURI = generateSentenceURI(metadata.docTitle, sentNum);
-
-      const tokenURIs = sentence.tokens.map((_, tIdx) =>
-        generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
-      );
-
-      // Sentence citation unit
       const nextSentURI =
         sIdx < validSentences.length - 1
           ? generateSentenceURI(metadata.docTitle, sentNum + 1)
@@ -714,25 +781,17 @@ export function conlluToTurtle(
         sIdx > 0
           ? generateSentenceURI(metadata.docTitle, sentNum - 1)
           : undefined;
-      addCitationSentence(
+
+      processCitationSentence(
         doc,
-        sentURI,
-        tokenURIs,
+        sentence,
+        metadata.docTitle,
         sentNum,
         validSentences.length,
+        docLayerURI,
         prevSentURI,
         nextSentURI,
       );
-
-      // Tokens in sentence
-      for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
-        const token = sentence.tokens[tIdx];
-        const tokenURI = tokenURIs[tIdx];
-        const nextTokenURI =
-          tIdx < sentence.tokens.length - 1 ? tokenURIs[tIdx + 1] : undefined;
-        const prevTokenURI = tIdx > 0 ? tokenURIs[tIdx - 1] : undefined;
-        addToken(doc, tokenURI, token, docLayerURI, prevTokenURI, nextTokenURI);
-      }
     }
   } else {
     // Even if citation layer is disabled, we still need to create tokens
@@ -740,20 +799,13 @@ export function conlluToTurtle(
     for (let sIdx = 0; sIdx < validSentences.length; sIdx++) {
       const sentence = validSentences[sIdx];
       const sentNum = sIdx + 1;
-
-      const tokenURIs = sentence.tokens.map((_, tIdx) =>
-        generateTokenURI(metadata.docTitle, sentNum, tIdx + 1),
+      processSentenceTokensOnly(
+        doc,
+        sentence,
+        metadata.docTitle,
+        sentNum,
+        docLayerURI,
       );
-
-      // Tokens in sentence (without citation structure)
-      for (let tIdx = 0; tIdx < sentence.tokens.length; tIdx++) {
-        const token = sentence.tokens[tIdx];
-        const tokenURI = tokenURIs[tIdx];
-        const nextTokenURI =
-          tIdx < sentence.tokens.length - 1 ? tokenURIs[tIdx + 1] : undefined;
-        const prevTokenURI = tIdx > 0 ? tokenURIs[tIdx - 1] : undefined;
-        addToken(doc, tokenURI, token, docLayerURI, prevTokenURI, nextTokenURI);
-      }
     }
   }
 

@@ -16,6 +16,7 @@ import {
   extractLemmaId,
   extractMetadata,
   featuresToUDURLs,
+  generateDocumentURI,
   generateMorphologyAnnotationURI,
   generateSentenceURI,
   generateTokenURI,
@@ -23,6 +24,9 @@ import {
   generateUDLayerSentenceURI,
   getLemmaPrefix,
   parseMiscField,
+  processCitationSentence,
+  processSentenceTokens,
+  processSentenceTokensOnly,
   toPrefixedURI,
   type DocumentMetadata,
 } from './ttl';
@@ -197,6 +201,133 @@ describe('TTL Module', () => {
     test('should return original URI if no prefix matches', () => {
       const uri = 'http://example.org/unknown';
       expect(toPrefixedURI(uri)).toBe(uri);
+    });
+  });
+
+  describe('generateDocumentURI', () => {
+    test('should generate correct document URI', () => {
+      const uri = generateDocumentURI('Test Document');
+      expect(uri).toBe(
+        'http://liita.it/data/corpora/Pirandelita/corpus/Test%20Document',
+      );
+    });
+
+    test('should encode special characters', () => {
+      const uri = generateDocumentURI('Test/Doc & More');
+      expect(uri).toContain('Test%2FDoc');
+      expect(uri).toContain('%20%26%20');
+    });
+  });
+
+  describe('processSentenceTokens', () => {
+    test('should process all tokens in a sentence', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const sentence = {
+        tokens: [
+          { form: 'Hello', misc: [] },
+          { form: 'World', misc: [] },
+        ],
+      };
+      const tokenURIs = [
+        'http://example.org/token1',
+        'http://example.org/token2',
+      ];
+      const docLayerURI = 'http://example.org/docLayer';
+
+      processSentenceTokens(doc, sentence, tokenURIs, docLayerURI);
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('"Hello"');
+      expect(serialized).toContain('"World"');
+      expect(serialized).toContain('powla:next');
+      expect(serialized).toContain('powla:previous');
+    });
+
+    test('should handle single token sentence', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const sentence = { tokens: [{ form: 'Hello', misc: [] }] };
+      const tokenURIs = ['http://example.org/token1'];
+      const docLayerURI = 'http://example.org/docLayer';
+
+      processSentenceTokens(doc, sentence, tokenURIs, docLayerURI);
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('"Hello"');
+    });
+  });
+
+  describe('processCitationSentence', () => {
+    test('should process citation sentence with tokens', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const sentence = {
+        tokens: [
+          { form: 'Hello', misc: [] },
+          { form: 'World', misc: [] },
+        ],
+      };
+      const docLayerURI = 'http://example.org/docLayer';
+
+      processCitationSentence(
+        doc,
+        sentence,
+        'Test Doc',
+        1,
+        1,
+        docLayerURI,
+        undefined,
+        undefined,
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('lila_corpus:citationUnit');
+      expect(serialized).toContain('"Hello"');
+      expect(serialized).toContain('"World"');
+    });
+
+    test('should handle sentence with next/previous links', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const sentence = { tokens: [{ form: 'Test', misc: [] }] };
+      const docLayerURI = 'http://example.org/docLayer';
+
+      processCitationSentence(
+        doc,
+        sentence,
+        'Test Doc',
+        2,
+        3,
+        docLayerURI,
+        'http://example.org/sent1',
+        'http://example.org/sent3',
+      );
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('powla:next');
+      expect(serialized).toContain('powla:previous');
+    });
+  });
+
+  describe('processSentenceTokensOnly', () => {
+    test('should process tokens without citation structure', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      const sentence = {
+        tokens: [
+          { form: 'Hello', misc: [] },
+          { form: 'World', misc: [] },
+        ],
+      };
+      const docLayerURI = 'http://example.org/docLayer';
+
+      processSentenceTokensOnly(doc, sentence, 'Test Doc', 1, docLayerURI);
+
+      const serialized = serializeDocument(doc);
+      expect(serialized).toContain('"Hello"');
+      expect(serialized).toContain('"World"');
+      expect(serialized).not.toContain('lila_corpus:citationUnit');
     });
   });
 
@@ -642,6 +773,174 @@ describe('TTL Module', () => {
 
       expect(result).toContain('powla:Document');
       expect(result).not.toContain('CitationStructure');
+    });
+
+    test('should filter out sentences with no tokens', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [{ type: 'metadata', key: 'docTitle', value: 'Test' }],
+            tokens: [],
+          },
+          {
+            comments: [],
+            tokens: [
+              {
+                id: '1',
+                form: 'Test',
+                lemma: 'test',
+                upos: 'NOUN',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      // Should only have one sentence (the one with tokens)
+      expect(result).toContain('Sentence_1');
+      expect(result).not.toContain('Sentence_2');
+    });
+
+    test('should handle document with multiple sentences', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [],
+            tokens: [
+              {
+                id: '1',
+                form: 'First',
+                lemma: 'first',
+                upos: 'ADJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+          {
+            comments: [],
+            tokens: [
+              {
+                id: '1',
+                form: 'Second',
+                lemma: 'second',
+                upos: 'ADJ',
+                xpos: '_',
+                feats: {},
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: false,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      expect(result).toContain('Sentence_1');
+      expect(result).toContain('Sentence_2');
+      expect(result).toContain('"First"');
+      expect(result).toContain('"Second"');
+    });
+
+    test('should handle tokens with lemmas and features', () => {
+      const document: ConlluDocument = {
+        sentences: [
+          {
+            comments: [],
+            tokens: [
+              {
+                id: '1',
+                form: 'Test',
+                lemma: 'test',
+                upos: 'NOUN',
+                xpos: '_',
+                feats: { Case: 'Nom', Gender: 'Fem' },
+                head: '0',
+                deprel: 'root',
+                deps: '_',
+                misc: [
+                  'LiITALinkedURIs=["http://liita.it/data/id/lemma/123"]',
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const metadata: DocumentMetadata = {
+        docId: 'test',
+        docTitle: 'Test',
+        contributor: '',
+        corpusRef: 'http://example.org/corpus',
+        docAuthor: '',
+        seeAlso: '',
+        description: '',
+      };
+
+      const result = conlluToTurtle(document, metadata, {
+        includeCitationLayer: true,
+        includeMorphologicalLayer: true,
+        citationLayerLabels: {
+          documentLabel: 'Document',
+          paragraphLabel: 'Paragraph',
+          sentenceLabel: 'Sentence',
+        },
+      });
+
+      expect(result).toContain('liitaLemma:123');
+      expect(result).toContain('https://universaldependencies.org/it/feat/Case#Nom');
+      expect(result).toContain('https://universaldependencies.org/it/feat/Gender#Fem');
     });
   });
 });
