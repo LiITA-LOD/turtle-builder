@@ -404,6 +404,14 @@ describe('TTL Module', () => {
       expect(serialized).toContain('lila_corpus:first');
       expect(serialized).toContain('lila_corpus:last');
     });
+
+    test('should throw error for empty sentenceURIs', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      expect(() => {
+        addCitationStructureHeader(doc, 'http://example.org/doc', 'Test', []);
+      }).toThrow('sentenceURIs must not be empty');
+    });
   });
 
   describe('addCitationSentence', () => {
@@ -427,6 +435,22 @@ describe('TTL Module', () => {
       expect(serialized).toContain('lila_corpus:hasCitLevel');
       expect(serialized).toContain('Sentence_1');
       expect(serialized).toContain('powla:hasChild');
+    });
+
+    test('should throw error for empty tokenURIs', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      expect(() => {
+        addCitationSentence(
+          doc,
+          'http://example.org/sent1',
+          [],
+          1,
+          1,
+          undefined,
+          undefined,
+        );
+      }).toThrow('tokenURIs must not be empty');
     });
   });
 
@@ -510,6 +534,14 @@ describe('TTL Module', () => {
       const serialized = serializeDocument(doc);
       expect(serialized).toContain('lila_corpus:SyntacticAnnotation');
     });
+
+    test('should throw error for empty udSentURIs', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      expect(() => {
+        addUDAnnotationLayerHeader(doc, 'http://example.org/doc', 'Test', []);
+      }).toThrow('udSentURIs must not be empty');
+    });
   });
 
   describe('addUDSentence', () => {
@@ -533,6 +565,22 @@ describe('TTL Module', () => {
       expect(serialized).toContain('powla:hasTerminal');
       expect(serialized).toContain('powla:firstTerminal');
       expect(serialized).toContain('powla:lastTerminal');
+    });
+
+    test('should throw error for empty tokenURIs', () => {
+      const doc = createDocument();
+      addAllPrefixes(doc);
+      expect(() => {
+        addUDSentence(
+          doc,
+          'http://example.org/udSent1',
+          [],
+          1,
+          1,
+          undefined,
+          undefined,
+        );
+      }).toThrow('tokenURIs must not be empty');
     });
   });
 

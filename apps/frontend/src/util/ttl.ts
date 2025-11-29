@@ -77,6 +77,13 @@ const OA_HAS_BODY = 'http://www.w3.org/ns/oa#hasBody';
 const OA_HAS_TARGET = 'http://www.w3.org/ns/oa#hasTarget';
 const _XSD_INTEGER = 'http://www.w3.org/2001/XMLSchema#integer';
 
+// Label constants
+const REF_TYPE_SENTENCE = 'Sentence';
+const LAYER_TITLE_CITATION = 'Citation Layer';
+const LAYER_TITLE_DOCUMENT = 'Document Layer';
+const LAYER_TITLE_UD_ANNOTATION = 'UD Annotation Layer';
+const LAYER_TITLE_UD_MORPHOLOGY = 'UD Morphology Annotation Layer';
+
 /**
  * Parse MISC field to extract structured information
  */
@@ -383,7 +390,7 @@ export function addDocumentLayer(
     doc,
     docLayerURI,
     toPrefixedURI(DC_TITLE),
-    'Document Layer',
+    LAYER_TITLE_DOCUMENT,
   );
   addProperty(doc, docLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
   return docLayerURI;
@@ -398,6 +405,10 @@ export function addCitationStructureHeader(
   docTitle: string,
   sentenceURIs: IRI[],
 ): IRI {
+  if (sentenceURIs.length === 0) {
+    throw new Error('sentenceURIs must not be empty');
+  }
+
   const citeStructureURI = `${docURI}/CiteStructure`;
   addType(doc, citeStructureURI, toPrefixedURI(LILA_CORPUS_CITATION_STRUCTURE));
   addProperty(
@@ -431,7 +442,7 @@ export function addCitationStructureHeader(
     doc,
     citeStructureURI,
     toPrefixedURI(DC_TITLE),
-    'Citation Layer',
+    LAYER_TITLE_CITATION,
   );
   addProperty(doc, citeStructureURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
   return citeStructureURI;
@@ -449,6 +460,10 @@ export function addCitationSentence(
   prevSentURI: IRI | undefined,
   nextSentURI: IRI | undefined,
 ): void {
+  if (tokenURIs.length === 0) {
+    throw new Error('tokenURIs must not be empty');
+  }
+
   addType(doc, sentURI, toPrefixedURI(LILA_CORPUS_CITATION_UNIT));
   addProperty(doc, sentURI, toPrefixedURI(LILA_CORPUS_FIRST), tokenURIs[0]);
   addIntegerProperty(
@@ -461,7 +476,7 @@ export function addCitationSentence(
     doc,
     sentURI,
     toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
-    'Sentence',
+    REF_TYPE_SENTENCE,
   );
   addStringProperty(
     doc,
@@ -548,6 +563,10 @@ export function addUDAnnotationLayerHeader(
   docTitle: string,
   udSentURIs: IRI[],
 ): IRI {
+  if (udSentURIs.length === 0) {
+    throw new Error('udSentURIs must not be empty');
+  }
+
   const udLayerURI = `${docURI}/UDAnnotationLayer`;
   addType(doc, udLayerURI, toPrefixedURI(LILA_CORPUS_SYNTACTIC_ANNOTATION));
   addProperty(doc, udLayerURI, toPrefixedURI(LILA_CORPUS_FIRST), udSentURIs[0]);
@@ -576,7 +595,7 @@ export function addUDAnnotationLayerHeader(
     doc,
     udLayerURI,
     toPrefixedURI(DC_TITLE),
-    `${docTitle} UD Annotation Layer`,
+    `${docTitle} ${LAYER_TITLE_UD_ANNOTATION}`,
   );
   addProperty(doc, udLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
   return udLayerURI;
@@ -594,6 +613,10 @@ export function addUDSentence(
   prevUdSentURI: IRI | undefined,
   nextUdSentURI: IRI | undefined,
 ): void {
+  if (tokenURIs.length === 0) {
+    throw new Error('tokenURIs must not be empty');
+  }
+
   addType(doc, udSentURI, toPrefixedURI(POWLA_ROOT));
   addIntegerProperty(
     doc,
@@ -605,7 +628,7 @@ export function addUDSentence(
     doc,
     udSentURI,
     toPrefixedURI(LILA_CORPUS_HAS_REF_TYPE),
-    'Sentence',
+    REF_TYPE_SENTENCE,
   );
   addStringProperty(
     doc,
@@ -693,7 +716,7 @@ export function addMorphologyAnnotationLayerHeader(
     doc,
     morphLayerURI,
     toPrefixedURI(DC_TITLE),
-    'UD Morphology Annotation Layer',
+    LAYER_TITLE_UD_MORPHOLOGY,
   );
   addProperty(doc, morphLayerURI, toPrefixedURI(POWLA_HAS_DOCUMENT), docURI);
   return morphLayerURI;
