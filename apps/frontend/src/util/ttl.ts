@@ -229,6 +229,11 @@ export interface ConlluToTurtleOptions {
   includeCitationLayer?: boolean;
   /** Include morphological layer (default: true) */
   includeMorphologicalLayer?: boolean;
+  citationLayerLabels: {
+    documentLabel: string;
+    paragraphLabel: string;
+    sentenceLabel: string;
+  }
 }
 
 /**

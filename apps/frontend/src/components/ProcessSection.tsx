@@ -4,32 +4,43 @@ import {
   Checkbox,
   Divider,
   FormControlLabel,
+  TextField,
   Typography,
 } from '@mui/material';
 import type React from 'react';
-import type { Metadata } from './MetadataInput';
+
+export interface CitationLayerLabels {
+  documentLabel: string;
+  paragraphLabel: string;
+  sentenceLabel: string;
+}
 
 interface ProcessSectionProps {
-  metadata: Metadata;
   uploadedFile: File | null;
   onProcess: () => void;
   onDownloadTurtle: () => void;
   includeCitationLayer: boolean;
   includeMorphologicalLayer: boolean;
+  citationLayerLabels: CitationLayerLabels;
   onCitationLayerChange: (value: boolean) => void;
   onMorphologicalLayerChange: (value: boolean) => void;
+  onCitationLayerLabelsChange: (value: CitationLayerLabels) => void;
 }
 
 const ProcessSection: React.FC<ProcessSectionProps> = ({
-  metadata,
   uploadedFile,
   onProcess,
   onDownloadTurtle,
   includeCitationLayer,
   includeMorphologicalLayer,
+  citationLayerLabels,
   onCitationLayerChange,
   onMorphologicalLayerChange,
+  onCitationLayerLabelsChange,
 }) => {
+  const handleLabelChange = (field: 'documentLabel' | 'paragraphLabel' | 'sentenceLabel', value: string) => {
+    onCitationLayerLabelsChange({ ...citationLayerLabels, [field]: value });
+  };
   return (
     <Box>
       <Typography variant="h4" component="h2" gutterBottom>
@@ -45,21 +56,64 @@ const ProcessSection: React.FC<ProcessSectionProps> = ({
           <FormControlLabel
             control={
               <Checkbox
-                checked={includeCitationLayer}
-                onChange={(e) => onCitationLayerChange(e.target.checked)}
-              />
-            }
-            label="Include citation layer"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
                 checked={includeMorphologicalLayer}
                 onChange={(e) => onMorphologicalLayerChange(e.target.checked)}
               />
             }
             label="Include morphological layer"
           />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeCitationLayer}
+                onChange={(e) => onCitationLayerChange(e.target.checked)}
+              />
+            }
+            label="Include citation layer"
+          />
+        </Box>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" component="h4" gutterBottom sx={{ mt: 3, mb: 2 }}>
+            Citation layer labels
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: '1fr 1fr 1fr',
+              },
+              gap: 2,
+            }}
+          >
+            <TextField
+              label="Document layer label"
+              value={citationLayerLabels.documentLabel}
+              onChange={(e) =>
+                handleLabelChange('documentLabel', e.target.value)
+              }
+              fullWidth
+              placeholder="Document"
+            />
+            <TextField
+              label="Paragraph layer label"
+              value={citationLayerLabels.paragraphLabel}
+              onChange={(e) =>
+                handleLabelChange('paragraphLabel', e.target.value)
+              }
+              fullWidth
+              placeholder="Paragraph"
+            />
+            <TextField
+              label="Sentence layer label"
+              value={citationLayerLabels.sentenceLabel}
+              onChange={(e) =>
+                handleLabelChange('sentenceLabel', e.target.value)
+              }
+              fullWidth
+              placeholder="Sentence"
+            />
+          </Box>
         </Box>
       </Box>
 

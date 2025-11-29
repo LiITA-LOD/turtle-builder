@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { parse } from 'liita-textlinker-frontend/conllu';
 import FileUpload from './FileUpload';
 import MetadataInput, { type Metadata } from './MetadataInput';
-import ProcessSection from './ProcessSection';
+import ProcessSection, { type CitationLayerLabels } from './ProcessSection';
 import { conlluToTurtle } from '../util/ttl';
 
 const Main: React.FC = () => {
@@ -21,6 +21,11 @@ const Main: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [includeCitationLayer, setIncludeCitationLayer] = useState(true);
   const [includeMorphologicalLayer, setIncludeMorphologicalLayer] = useState(false);
+  const [citationLayerLabels, setCitationLayerLabels] = useState<CitationLayerLabels>({
+    documentLabel: 'Document',
+    paragraphLabel: 'Paragraph',
+    sentenceLabel: 'Sentence',
+  });
 
   const extractMetadataFromContent = (content: string): Metadata => {
     const lines = content.split('\n');
@@ -175,6 +180,7 @@ const Main: React.FC = () => {
       const turtleContent = conlluToTurtle(document, documentMetadata, {
         includeCitationLayer,
         includeMorphologicalLayer,
+        citationLayerLabels,
       });
 
       // Determine filename based on docTitle or use default
@@ -221,14 +227,15 @@ const Main: React.FC = () => {
       <MetadataInput metadata={metadata} onMetadataChange={setMetadata} />
 
       <ProcessSection
-        metadata={metadata}
         uploadedFile={uploadedFile}
         onProcess={handleProcess}
         onDownloadTurtle={handleDownloadTurtle}
         includeCitationLayer={includeCitationLayer}
         includeMorphologicalLayer={includeMorphologicalLayer}
+        citationLayerLabels={citationLayerLabels}
         onCitationLayerChange={setIncludeCitationLayer}
         onMorphologicalLayerChange={setIncludeMorphologicalLayer}
+        onCitationLayerLabelsChange={setCitationLayerLabels}
       />
     </Box>
   );
